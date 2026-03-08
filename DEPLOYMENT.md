@@ -56,6 +56,16 @@ npm run predeploy:check
 # npm run predeploy:check -- --production-env
 ```
 
+## Troubleshooting sign-in and leaderboards
+
+- `/sign-in` fails:
+  - verify `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` are set in Vercel Production env
+  - verify Clerk "Allowed redirect URLs" and domain settings include your Vercel production domain
+- `/leaderboards` redirects away:
+  - this route is protected and requires auth; sign in first
+  - if it redirects to `/?setup=incomplete`, required production env keys are missing
+  - verify `DATABASE_URL`, `ODDS_API_KEY`, `CRON_SECRET` (32+ chars), and `ADMIN_EMAILS`
+
 ## Current blocker on this machine
 
 - No GitHub remote is configured.

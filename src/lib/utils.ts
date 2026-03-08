@@ -23,7 +23,7 @@ export function formatSpread(spread: number) {
 }
 
 export function formatGameTime(value: string) {
-  return format(new Date(value), "EEE, MMM d • h:mm a");
+  return format(new Date(value), "EEE, MMM d | h:mm a");
 }
 
 export function formatCompactDate(value: string) {

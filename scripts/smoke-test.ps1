@@ -105,7 +105,9 @@ try {
 
   $probes = @(
     (Invoke-Probe -Method "GET" -Url "$baseUrl/" -Headers @{}),
+    (Invoke-Probe -Method "GET" -Url "$baseUrl/sign-in" -Headers @{}),
     (Invoke-Probe -Method "GET" -Url "$baseUrl/today" -Headers @{}),
+    (Invoke-Probe -Method "GET" -Url "$baseUrl/leaderboards" -Headers @{}),
     (Invoke-Probe -Method "GET" -Url "$baseUrl/admin" -Headers @{}),
     (Invoke-Probe -Method "GET" -Url "$baseUrl/api/cron/odds-sync" -Headers @{}),
     (Invoke-Probe -Method "GET" -Url "$baseUrl/api/cron/odds-sync" -Headers @{ Authorization = "Bearer wrongtokenwrongtokenwrongtoken12" }),

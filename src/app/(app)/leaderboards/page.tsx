@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getMemberSnapshot } from "@/lib/clubhouse";
 import { requireViewer } from "@/lib/auth";
+import { getMemberSnapshot } from "@/lib/clubhouse";
 import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +31,7 @@ export default async function LeaderboardsPage() {
               <div>
                 <div className="text-lg font-semibold text-white">{entry.displayName}</div>
                 <div className="text-sm text-[var(--muted-foreground)]">
-                  {entry.wins}-{entry.losses}-{entry.pushes} • ROI {entry.roiPercent}%
+                  {entry.wins}-{entry.losses}-{entry.pushes} | ROI {entry.roiPercent}%
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2 md:justify-end">

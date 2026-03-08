@@ -3,8 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { getMemberSnapshot } from "@/lib/clubhouse";
 import { requireViewer } from "@/lib/auth";
+import { getMemberSnapshot } from "@/lib/clubhouse";
 import { formatCompactDate, formatCurrency, formatOdds, formatSpread } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +15,7 @@ export default async function SlipsPage() {
   const selectionOptions = snapshot.games.flatMap((game) =>
     game.options.map((option) => ({
       value: option.id,
-      label: `${game.league} • ${option.team} ${formatSpread(option.spread)} (${formatOdds(option.americanOdds)})`,
+      label: `${game.league} | ${option.team} ${formatSpread(option.spread)} (${formatOdds(option.americanOdds)})`,
     })),
   );
 
@@ -98,7 +98,7 @@ export default async function SlipsPage() {
                     <div>
                       <div className="font-semibold text-white">{leg.selectionTeam}</div>
                       <div className="font-mono text-[var(--muted-foreground)]">
-                        {formatSpread(leg.spread)} • {formatOdds(leg.americanOdds)}
+                        {formatSpread(leg.spread)} | {formatOdds(leg.americanOdds)}
                       </div>
                     </div>
                     <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted-foreground)]">

@@ -31,11 +31,11 @@ describe("environment helpers", () => {
     expect(missing).toContain("DATABASE_URL");
     expect(missing).toContain("ODDS_API_KEY");
     expect(missing).toContain("CRON_SECRET");
-    expect(missing).toContain("ADMIN_EMAILS(customize)");
+    expect(missing).toContain("ADMIN_EMAILS");
   });
 
   it("wraps invalid env values in a configuration error", async () => {
-    process.env.CRON_SECRET = "short";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "invalid";
 
     const { ConfigurationError, getRuntimeConfig } = await import("@/lib/env");
     expect(() => getRuntimeConfig()).toThrow(ConfigurationError);

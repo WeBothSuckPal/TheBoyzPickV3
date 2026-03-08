@@ -20,4 +20,11 @@ describe("security helpers", () => {
     const { requireConfiguredCronSecret, SecurityError } = await import("@/lib/security");
     expect(() => requireConfiguredCronSecret()).toThrow(SecurityError);
   });
+
+  it("rejects CRON_SECRET shorter than 32 chars", async () => {
+    process.env.CRON_SECRET = "short-secret";
+
+    const { requireCronSecret } = await import("@/lib/env");
+    expect(() => requireCronSecret()).toThrow("at least 32 characters");
+  });
 });

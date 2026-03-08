@@ -15,8 +15,8 @@ const envSchema = z.object({
   CLERK_SECRET_KEY: z.string().optional(),
   DATABASE_URL: z.string().optional(),
   ODDS_API_KEY: z.string().optional(),
-  CRON_SECRET: z.string().min(32).optional(),
-  ADMIN_EMAILS: z.string().default("commissioner@example.com"),
+  CRON_SECRET: z.string().optional(),
+  ADMIN_EMAILS: z.string().optional(),
   PRIMARY_BOOKMAKER: z.string().default("draftkings"),
   CLUB_TIME_ZONE: z.string().default("America/New_York"),
   BANKROLL_PAYMENT_INSTRUCTIONS: z
@@ -96,8 +96,10 @@ export function getAppMode(): AppMode {
 }
 
 export function getAdminEmails() {
-  return parseEnv()
-    .ADMIN_EMAILS.split(",")
+  const value = parseEnv().ADMIN_EMAILS ?? "commissioner@example.com";
+
+  return value
+    .split(",")
     .map((value) => value.trim().toLowerCase())
     .filter(Boolean);
 }
@@ -117,6 +119,10 @@ export function requireCronSecret() {
     throw new Error("CRON_SECRET must be configured before cron routes are enabled.");
   }
 
+  if (secret.length < 32) {
+    throw new Error("CRON_SECRET must be at least 32 characters.");
+  }
+
   return secret;
 }
 
@@ -133,10 +139,6 @@ export function getMissingProductionEnvKeys() {
 
   if (env.CRON_SECRET && env.CRON_SECRET.length < 32) {
     missing.push("CRON_SECRET(min:32)");
-  }
-
-  if (env.ADMIN_EMAILS.trim().toLowerCase() === "commissioner@example.com") {
-    missing.push("ADMIN_EMAILS(customize)");
   }
 
   return missing;
