@@ -29,6 +29,7 @@ git push -u origin main
 4. Import the GitHub repository into Vercel.
 5. In Vercel project settings, enable Deployment Protection for preview environments.
 6. Confirm cron jobs exist from [vercel.json](/C:/Users/Administrator/Documents/New%20project/vercel.json).
+7. Use Node `22` for local and CI consistency (see [.nvmrc](/C:/Users/Administrator/Documents/New%20project/.nvmrc)).
 
 ## First production run
 
@@ -51,6 +52,8 @@ npm run db:migrate
 
 ```bash
 npm run predeploy:check
+# optional strict env validation:
+# npm run predeploy:check -- --production-env
 ```
 
 ## Current blocker on this machine

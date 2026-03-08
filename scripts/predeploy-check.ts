@@ -6,6 +6,11 @@ type JournalEntry = {
   tag: string;
 };
 
+type VercelCron = {
+  path: string;
+  schedule: string;
+};
+
 const requireProductionEnv = process.argv.includes("--production-env");
 
 function readJson<T>(filePath: string): T {
@@ -35,6 +40,50 @@ function run() {
       if (failures.length === 0) {
         passes.push(`Validated ${journal.entries.length} migrations from drizzle journal.`);
       }
+    }
+  }
+
+  const vercelConfigPath = path.join(projectRoot, "vercel.json");
+  if (!existsSync(vercelConfigPath)) {
+    failures.push("Missing Vercel config file: vercel.json");
+  } else {
+    const vercelConfig = readJson<{ crons?: VercelCron[] }>(vercelConfigPath);
+    const configuredCrons = vercelConfig.crons ?? [];
+    const expectedCrons: VercelCron[] = [
+      { path: "/api/cron/odds-sync", schedule: "*/15 * * * *" },
+      { path: "/api/cron/settle", schedule: "*/5 * * * *" },
+      { path: "/api/cron/ai-hourly", schedule: "5 * * * *" },
+      { path: "/api/cron/ai-nightly", schedule: "17 4 * * *" },
+    ];
+
+    for (const expectedCron of expectedCrons) {
+      const match = configuredCrons.find((cron) => cron.path === expectedCron.path);
+      if (!match) {
+        failures.push(`Missing cron entry in vercel.json: ${expectedCron.path}`);
+        continue;
+      }
+
+      if (match.schedule !== expectedCron.schedule) {
+        failures.push(
+          `Cron schedule mismatch for ${expectedCron.path}: expected "${expectedCron.schedule}", got "${match.schedule}"`,
+        );
+      }
+    }
+
+    const expectedCronRoutes = [
+      "src/app/api/cron/odds-sync/route.ts",
+      "src/app/api/cron/settle/route.ts",
+      "src/app/api/cron/ai-hourly/route.ts",
+      "src/app/api/cron/ai-nightly/route.ts",
+    ];
+    for (const routePath of expectedCronRoutes) {
+      if (!existsSync(path.join(projectRoot, routePath))) {
+        failures.push(`Missing cron route file: ${routePath}`);
+      }
+    }
+
+    if (failures.length === 0) {
+      passes.push("Vercel cron configuration and route files are valid.");
     }
   }
 

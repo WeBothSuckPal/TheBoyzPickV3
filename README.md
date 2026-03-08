@@ -51,6 +51,7 @@ Production safety behavior:
 ## Local development
 
 ```bash
+nvm use
 npm install
 npm run dev
 ```
@@ -84,6 +85,8 @@ npm run predeploy:check
 # optional strict env validation:
 # npm run predeploy:check -- --production-env
 ```
+
+Node runtime target: `22` (see [.nvmrc](/C:/Users/Administrator/Documents/New%20project/.nvmrc)).
 
 ## Deployment
 
