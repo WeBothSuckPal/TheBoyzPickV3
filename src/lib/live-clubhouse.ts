@@ -946,6 +946,13 @@ async function getSlipViews(userId: string): Promise<BetSlipView[]> {
   }));
 }
 
+export async function getPublicLeaderboardsLive(): Promise<{
+  leaderboards: LeaderboardEntry[];
+  rivalryBoard: RivalryEntry[];
+}> {
+  return computeLeaderboards();
+}
+
 async function computeLeaderboards(): Promise<{
   leaderboards: LeaderboardEntry[];
   rivalryBoard: RivalryEntry[];

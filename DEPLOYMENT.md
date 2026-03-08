@@ -2,20 +2,12 @@
 
 ## GitHub
 
-1. Create a new GitHub repository.
-2. Add the remote:
+The repo is live at `https://github.com/WeBothSuckPal/TheBoyzPickV3`.
 
-```powershell
-git remote add origin https://github.com/<your-org-or-user>/clubhouse-lines.git
-```
+Push changes to `main`:
 
-3. Push the repo (default branch `main` recommended):
-
-```powershell
-git add .
-git commit -m "Initial Clubhouse Lines app"
-git branch -M main
-git push -u origin main
+```bash
+git push origin main
 ```
 
 ## Vercel
@@ -61,15 +53,4 @@ npm run predeploy:check
 - `/sign-in` fails:
   - verify `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` are set in Vercel Production env
   - verify Clerk "Allowed redirect URLs" and domain settings include your Vercel production domain
-- `/leaderboards` redirects away:
-  - this route is protected and requires auth; sign in first
-  - if it redirects to `/?setup=incomplete`, required production env keys are missing
-  - verify `DATABASE_URL`, `ODDS_API_KEY`, `CRON_SECRET` (32+ chars), and `ADMIN_EMAILS`
-
-## Current blocker on this machine
-
-- No GitHub remote is configured.
-- No GitHub CLI credentials are available.
-- No Vercel credentials or token are available.
-
-Once those credentials exist, the repo is ready to be pushed and imported.
+- `/leaderboards` is public and requires no sign-in; if it redirects to `/?setup=incomplete`, required production env keys are missing — verify `DATABASE_URL`, `ODDS_API_KEY`, `CRON_SECRET` (32+ chars), and `ADMIN_EMAILS`

@@ -7,7 +7,6 @@ const isProtectedRoute = createRouteMatcher([
   "/today(.*)",
   "/slips(.*)",
   "/wallet(.*)",
-  "/leaderboards(.*)",
   "/admin(.*)",
   "/api/admin(.*)",
 ]);
@@ -65,7 +64,7 @@ function handleWithoutClerk(request: NextRequest) {
   return NextResponse.next();
 }
 
-export default function proxy(request: NextRequest, event: NextFetchEvent) {
+export default function middleware(request: NextRequest, event: NextFetchEvent) {
   if (isProduction() && (isProtectedRoute(request) || isCronRoute(request))) {
     try {
       const missingKeys = getMissingProductionEnvKeys();

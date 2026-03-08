@@ -14,6 +14,7 @@ import {
   loadSettingsLive,
   getAdminSnapshotLive,
   getMemberSnapshotLive,
+  getPublicLeaderboardsLive,
   placeSlipLive,
   requestTopUpLive,
   runOddsSyncLive,
@@ -1151,5 +1152,19 @@ export async function runSettlementSweep() {
     success: true,
     settledGames,
     settledSlips,
+  };
+}
+
+export async function getPublicLeaderboards(): Promise<{
+  leaderboards: LeaderboardEntry[];
+  rivalryBoard: RivalryEntry[];
+}> {
+  if (isDatabaseConfigured()) {
+    return getPublicLeaderboardsLive();
+  }
+
+  return {
+    leaderboards: buildLeaderboards(),
+    rivalryBoard: buildRivalryBoard(),
   };
 }
