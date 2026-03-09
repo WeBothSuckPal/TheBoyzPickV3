@@ -74,11 +74,20 @@ export async function placeSlipAction(formData: FormData) {
     selectionIds,
   });
 
-  await placeSlip({
-    userId: viewer.id,
-    stakeCents: parsed.stake * 100,
-    selectionIds: parsed.selectionIds,
-  });
+  let errorMessage: string | undefined;
+  try {
+    await placeSlip({
+      userId: viewer.id,
+      stakeCents: parsed.stake * 100,
+      selectionIds: parsed.selectionIds,
+    });
+  } catch (error) {
+    errorMessage = error instanceof Error ? error.message : "Slip placement failed.";
+  }
+
+  if (errorMessage) {
+    redirect(`/slips?error=${encodeURIComponent(errorMessage)}`);
+  }
 
   revalidatePath("/slips");
   revalidatePath("/wallet");
