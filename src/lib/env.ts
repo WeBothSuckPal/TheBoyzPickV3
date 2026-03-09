@@ -22,6 +22,8 @@ const envSchema = z.object({
   BANKROLL_PAYMENT_INSTRUCTIONS: z
     .string()
     .default("Send payment to the commissioner and request approval here once sent."),
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().optional(),
 });
 
 type ParsedEnv = z.infer<typeof envSchema>;
@@ -155,6 +157,14 @@ export function assertProductionEnvReady() {
       `Missing required production environment configuration: ${missing.join(", ")}`,
     );
   }
+}
+
+export function getResendApiKey() {
+  return parseEnv().RESEND_API_KEY;
+}
+
+export function getEmailFrom() {
+  return parseEnv().EMAIL_FROM ?? "Clubhouse Lines <noreply@clubhouselines.com>";
 }
 
 export function getRuntimeConfig() {

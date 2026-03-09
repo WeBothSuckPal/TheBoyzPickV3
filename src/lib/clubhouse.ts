@@ -48,6 +48,7 @@ import type {
   ViewerProfile,
   WalletLedgerEntry,
   WalletView,
+  WeekLockFeedEntry,
 } from "@/lib/types";
 
 interface ClubhouseStore {
@@ -565,6 +566,8 @@ export async function getMemberSnapshot(viewer: ViewerProfile): Promise<MemberSn
   const store = getStore();
   const wallet = getWallet(viewer.id);
 
+  const weekKey = currentWeekKey();
+
   return {
     viewer,
     wallet,
@@ -584,10 +587,24 @@ export async function getMemberSnapshot(viewer: ViewerProfile): Promise<MemberSn
       .filter((request) => request.userId === viewer.id)
       .sort((a, b) => +new Date(b.requestedAt) - +new Date(a.requestedAt)),
     lockPick: store.lockPicks.find(
-      (pick) => pick.userId === viewer.id && pick.weekKey === currentWeekKey(),
+      (pick) => pick.userId === viewer.id && pick.weekKey === weekKey,
     ),
     leaderboards: buildLeaderboards(),
     rivalryBoard: buildRivalryBoard(),
+    weekLockFeed: store.lockPicks
+      .filter((pick) => pick.weekKey === weekKey)
+      .sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt))
+      .map((pick) => ({
+        id: pick.id,
+        displayName: store.users.find((u) => u.id === pick.userId)?.displayName ?? "Member",
+        selectionTeam: pick.selectionTeam,
+        selectionSide: pick.selectionSide,
+        spread: pick.spread,
+        americanOdds: pick.americanOdds,
+        result: pick.result,
+        note: pick.note,
+        createdAt: pick.createdAt,
+      })),
     activity: store.activity,
     settings: store.settings,
     mode: getAppMode(),
@@ -805,9 +822,9 @@ export async function placeSlip(input: {
   return slip;
 }
 
-export async function saveLockPick(userId: string, selectionId: string) {
+export async function saveLockPick(userId: string, selectionId: string, note?: string) {
   if (isDatabaseConfigured()) {
-    return saveLockPickLive(userId, selectionId);
+    return saveLockPickLive(userId, selectionId, note);
   }
 
   const store = getStore();
@@ -830,6 +847,7 @@ export async function saveLockPick(userId: string, selectionId: string) {
     existing.bookmaker = reference.option.bookmaker;
     existing.quoteTimestamp = reference.option.quoteTimestamp;
     existing.result = "pending";
+    existing.note = note;
     addAudit(userId, "updated_lock_pick", "lock_pick", existing.id);
     return existing;
   }
@@ -847,6 +865,7 @@ export async function saveLockPick(userId: string, selectionId: string) {
     bookmaker: reference.option.bookmaker,
     quoteTimestamp: reference.option.quoteTimestamp,
     result: "pending",
+    note,
     createdAt: nowIso(),
   };
 

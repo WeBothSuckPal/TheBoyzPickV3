@@ -32,6 +32,7 @@ import {
   walletAccounts,
   walletLedgerEntries,
 } from "@/lib/db/schema";
+import { sendSettlementEmails, type SettledSlipRecord } from "@/lib/email";
 import { getAdminEmails, getAppMode, getClubTimeZone } from "@/lib/env";
 import { fetchLeagueOdds, fetchLeagueScores } from "@/lib/odds-api";
 import { getWeekKey, isDateOnOrAfterWeekKey } from "@/lib/time";
@@ -57,6 +58,7 @@ import type {
   ViewerProfile,
   WalletLedgerEntry,
   WalletView,
+  WeekLockFeedEntry,
 } from "@/lib/types";
 
 type AuditMetadata = Record<string, unknown> | undefined;
@@ -241,6 +243,7 @@ function mapLockPick(row: typeof lockPicks.$inferSelect): LockPickView {
     bookmaker: row.bookmakerKey,
     quoteTimestamp: toIso(row.quoteTimestamp)!,
     result: row.result,
+    note: row.note ?? undefined,
     createdAt: toIso(row.createdAt)!,
   };
 }
@@ -1141,10 +1144,42 @@ export async function syncViewerLive(input: {
   return mapViewer(row);
 }
 
+export async function getWeekLockFeedLive(): Promise<WeekLockFeedEntry[]> {
+  const db = dbOrThrow();
+  const rows = await db
+    .select({
+      id: lockPicks.id,
+      selectionTeam: lockPicks.selectionTeam,
+      selectionSide: lockPicks.selectionSide,
+      spread: lockPicks.spread,
+      americanOdds: lockPicks.americanOdds,
+      result: lockPicks.result,
+      note: lockPicks.note,
+      createdAt: lockPicks.createdAt,
+      displayName: userProfiles.displayName,
+    })
+    .from(lockPicks)
+    .innerJoin(userProfiles, eq(lockPicks.userProfileId, userProfiles.id))
+    .where(eq(lockPicks.weekKey, currentWeekKey()))
+    .orderBy(asc(lockPicks.createdAt));
+
+  return rows.map((row) => ({
+    id: row.id,
+    displayName: row.displayName,
+    selectionTeam: row.selectionTeam,
+    selectionSide: row.selectionSide as WeekLockFeedEntry["selectionSide"],
+    spread: numericToNumber(row.spread),
+    americanOdds: row.americanOdds,
+    result: row.result,
+    note: row.note ?? undefined,
+    createdAt: toIso(row.createdAt)!,
+  }));
+}
+
 export async function getMemberSnapshotLive(viewer: ViewerProfile): Promise<MemberSnapshot> {
   const db = dbOrThrow();
   const settings = await loadSettingsLive();
-  const [{ games: gameCards }, wallet, slips, topUps, pickRows, boardData, activity] =
+  const [{ games: gameCards }, wallet, slips, topUps, pickRows, boardData, activity, weekLockFeed] =
     await Promise.all([
       buildGameCards(settings),
       getWalletView(viewer.id),
@@ -1166,6 +1201,7 @@ export async function getMemberSnapshotLive(viewer: ViewerProfile): Promise<Memb
         .limit(1),
       computeLeaderboards(),
       getActivityFeed(),
+      getWeekLockFeedLive(),
     ]);
 
   return {
@@ -1177,6 +1213,7 @@ export async function getMemberSnapshotLive(viewer: ViewerProfile): Promise<Memb
     lockPick: pickRows[0] ? mapLockPick(pickRows[0]) : undefined,
     leaderboards: boardData.leaderboards,
     rivalryBoard: boardData.rivalryBoard,
+    weekLockFeed,
     activity,
     settings,
     mode: getAppMode(),
@@ -1456,7 +1493,7 @@ export async function placeSlipLive(input: {
   return slips.find((slip) => slip.id === insertedSlip.id)!;
 }
 
-export async function saveLockPickLive(userId: string, selectionId: string) {
+export async function saveLockPickLive(userId: string, selectionId: string, note?: string) {
   const db = dbOrThrow();
   const rows = await db
     .select()
@@ -1490,6 +1527,7 @@ export async function saveLockPickLive(userId: string, selectionId: string) {
         bookmakerKey: quote.bookmakerKey,
         quoteTimestamp: quote.quoteTimestamp,
         result: "pending",
+        note: note ?? null,
       })
       .where(eq(lockPicks.id, existing[0].id))
       .returning();
@@ -1511,6 +1549,7 @@ export async function saveLockPickLive(userId: string, selectionId: string) {
       bookmakerKey: quote.bookmakerKey,
       quoteTimestamp: quote.quoteTimestamp,
       weekKey: currentWeekKey(),
+      note: note ?? null,
     })
     .returning();
 
@@ -1986,6 +2025,8 @@ export async function runSettlementSweepLive() {
     .where(eq(betSlips.status, "open"))
     .orderBy(desc(betSlips.createdAt));
 
+  const settledEmailPayloads: SettledSlipRecord[] = [];
+
   if (openSlipRows.length > 0) {
     const legRows = await db
       .select()
@@ -2072,7 +2113,40 @@ export async function runSettlementSweepLive() {
       }
 
       settledSlips += 1;
+      settledEmailPayloads.push({
+        userId: slip.userProfileId,
+        userEmail: "",
+        userDisplayName: "",
+        slipId: slip.id,
+        slipType: slip.slipType,
+        status: settlement.status as SettledSlipRecord["status"],
+        stakeCents: slip.stakeCents,
+        payoutCents: settlement.payoutCents,
+        legs: views.map((v) => ({
+          selectionTeam: v.selectionTeam,
+          spread: v.spread,
+          americanOdds: v.americanOdds,
+          result: v.result,
+        })),
+      });
     }
+  }
+
+  if (settledEmailPayloads.length > 0) {
+    const uniqueIds = [...new Set(settledEmailPayloads.map((p) => p.userId))];
+    const profileRows = await db
+      .select({ id: userProfiles.id, email: userProfiles.email, displayName: userProfiles.displayName })
+      .from(userProfiles)
+      .where(inArray(userProfiles.id, uniqueIds));
+    const profileMap = new Map(profileRows.map((r) => [r.id, r]));
+    const withEmails = settledEmailPayloads
+      .map((p) => ({
+        ...p,
+        userEmail: profileMap.get(p.userId)?.email ?? "",
+        userDisplayName: profileMap.get(p.userId)?.displayName ?? "Member",
+      }))
+      .filter((p) => p.userEmail);
+    void sendSettlementEmails(withEmails);
   }
 
   const picks = await db.select().from(lockPicks).where(eq(lockPicks.weekKey, currentWeekKey()));

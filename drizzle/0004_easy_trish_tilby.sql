@@ -1,0 +1,1 @@
+ALTER TABLE "lock_picks" ADD COLUMN "note" text;
