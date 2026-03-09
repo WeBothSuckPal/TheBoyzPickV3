@@ -17,8 +17,9 @@ export default async function SlipsPage({
   const { error } = await searchParams;
   const viewer = await requireViewer();
   const snapshot = await getMemberSnapshot(viewer);
+  const now = new Date();
   const selectionOptions = snapshot.games
-    .filter((game) => game.status === "scheduled")
+    .filter((game) => game.status === "scheduled" && new Date(game.commenceTime) > now)
     .flatMap((game) =>
       game.options.map((option) => ({
         value: option.id,
