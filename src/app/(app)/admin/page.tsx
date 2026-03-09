@@ -14,7 +14,12 @@ import { formatCompactDate, formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
   const viewer = await requireAdmin();
   const snapshot = await getMemberSnapshot(viewer);
   const admin = await getAdminSnapshot();
@@ -22,6 +27,11 @@ export default async function AdminPage() {
   return (
     <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
       <div className="grid gap-6">
+        {error ? (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+            {error}
+          </div>
+        ) : null}
         <Card>
           <CardHeader>
             <CardTitle>Operations</CardTitle>

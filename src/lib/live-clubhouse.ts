@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq, gte, inArray, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
 
 import { buildSpreadIntelligence, rankAnomalyAlerts, summarizeOpsHealth } from "@/lib/ai";
 import {
@@ -1933,6 +1933,23 @@ export async function runSettlementSweepLive() {
   let settledSlips = 0;
 
   for (const league of settings.enabledLeagues) {
+    // Only call the Odds API if there are games that have started and aren't settled yet
+    const activeGameRows = await db
+      .select({ id: games.id })
+      .from(games)
+      .where(
+        and(
+          eq(games.leagueSlug, league),
+          or(
+            eq(games.status, "in_progress"),
+            and(eq(games.status, "scheduled"), lte(games.commenceTime, new Date())),
+          ),
+        ),
+      )
+      .limit(1);
+
+    if (activeGameRows.length === 0) continue;
+
     const scoreRows = await fetchLeagueScores(league);
 
     for (const result of scoreRows) {

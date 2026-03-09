@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import {
@@ -133,7 +134,18 @@ export async function runOddsSyncAction() {
     requestContext,
     policies: [{ category: "admin_sync:user", limit: 12, windowMs: 10 * 60 * 1000, blockMs: 10 * 60 * 1000 }],
   });
-  await runOddsSync();
+
+  let errorMessage: string | undefined;
+  try {
+    await runOddsSync();
+  } catch (error) {
+    errorMessage = error instanceof Error ? error.message : "Odds sync failed.";
+  }
+
+  if (errorMessage) {
+    redirect(`/admin?error=${encodeURIComponent(errorMessage)}`);
+  }
+
   revalidatePath("/today");
   revalidatePath("/admin");
 }
@@ -146,7 +158,18 @@ export async function runSettlementSweepAction() {
     requestContext,
     policies: [{ category: "admin_settle:user", limit: 12, windowMs: 10 * 60 * 1000, blockMs: 10 * 60 * 1000 }],
   });
-  await runSettlementSweep();
+
+  let errorMessage: string | undefined;
+  try {
+    await runSettlementSweep();
+  } catch (error) {
+    errorMessage = error instanceof Error ? error.message : "Settlement sweep failed.";
+  }
+
+  if (errorMessage) {
+    redirect(`/admin?error=${encodeURIComponent(errorMessage)}`);
+  }
+
   revalidatePath("/slips");
   revalidatePath("/wallet");
   revalidatePath("/leaderboards");
@@ -168,7 +191,17 @@ export async function runAiOpsAutopilotAction(formData: FormData) {
       ? modeRaw
       : "manual";
 
-  await runAiOpsAutopilot(mode);
+  let errorMessage: string | undefined;
+  try {
+    await runAiOpsAutopilot(mode);
+  } catch (error) {
+    errorMessage = error instanceof Error ? error.message : "AI autopilot failed.";
+  }
+
+  if (errorMessage) {
+    redirect(`/admin?error=${encodeURIComponent(errorMessage)}`);
+  }
+
   revalidatePath("/admin");
   revalidatePath("/today");
 }
