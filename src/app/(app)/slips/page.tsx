@@ -9,15 +9,22 @@ import { formatCompactDate, formatCurrency, formatOdds, formatSpread } from "@/l
 
 export const dynamic = "force-dynamic";
 
-export default async function SlipsPage() {
+export default async function SlipsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
   const viewer = await requireViewer();
   const snapshot = await getMemberSnapshot(viewer);
-  const selectionOptions = snapshot.games.flatMap((game) =>
-    game.options.map((option) => ({
-      value: option.id,
-      label: `${game.league} | ${option.team} ${formatSpread(option.spread)} (${formatOdds(option.americanOdds)})`,
-    })),
-  );
+  const selectionOptions = snapshot.games
+    .filter((game) => game.status === "scheduled")
+    .flatMap((game) =>
+      game.options.map((option) => ({
+        value: option.id,
+        label: `${game.league} | ${option.team} ${formatSpread(option.spread)} (${formatOdds(option.americanOdds)})`,
+      })),
+    );
 
   return (
     <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
@@ -29,6 +36,11 @@ export default async function SlipsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {error ? (
+            <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+              {error}
+            </div>
+          ) : null}
           <form action={placeSlipAction} className="space-y-4">
             {[1, 2, 3, 4].map((index) => (
               <select
