@@ -2,6 +2,7 @@ import { saveLockPickAction } from "@/app/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { requireViewer } from "@/lib/auth";
 import { getMemberSnapshot } from "@/lib/clubhouse";
 import { formatGameTime, formatOdds, formatSpread } from "@/lib/utils";
@@ -91,6 +92,11 @@ export default async function TodayPage() {
                   {formatSpread(snapshot.lockPick.spread)} |{" "}
                   {formatOdds(snapshot.lockPick.americanOdds)}
                 </div>
+                {snapshot.lockPick.note ? (
+                  <div className="mt-2 text-xs text-[var(--muted-foreground)]">
+                    &ldquo;{snapshot.lockPick.note}&rdquo;
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
@@ -110,10 +116,68 @@ export default async function TodayPage() {
                   )),
                 )}
               </select>
+              <Input
+                name="note"
+                type="text"
+                maxLength={140}
+                placeholder="Your reasoning… 140 chars max"
+                defaultValue={snapshot.lockPick?.note ?? ""}
+              />
               <Button type="submit" className="w-full">
                 Save lock
               </Button>
             </form>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>This Week&apos;s Locks</CardTitle>
+            <CardDescription>Every member&apos;s pick for the current week.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {snapshot.weekLockFeed.length === 0 ? (
+              <div className="text-sm text-[var(--muted-foreground)]">
+                No locks submitted yet this week.
+              </div>
+            ) : (
+              snapshot.weekLockFeed.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="rounded-3xl border border-white/10 bg-black/18 px-4 py-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+                        {entry.displayName}
+                      </div>
+                      <div className="mt-1 font-semibold text-white">{entry.selectionTeam}</div>
+                      <div className="font-mono text-sm text-[var(--muted-foreground)]">
+                        {formatSpread(entry.spread)} | {formatOdds(entry.americanOdds)}
+                      </div>
+                      {entry.note ? (
+                        <div className="mt-1 text-xs italic text-[var(--muted-foreground)]">
+                          &ldquo;{entry.note}&rdquo;
+                        </div>
+                      ) : null}
+                    </div>
+                    <Badge
+                      className={
+                        entry.result === "win"
+                          ? "border-green-500/30 bg-green-500/10 text-green-400"
+                          : entry.result === "loss"
+                            ? "border-red-500/30 bg-red-500/10 text-red-400"
+                            : entry.result === "push" || entry.result === "void"
+                              ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-400"
+                              : undefined
+                      }
+                    >
+                      {entry.result}
+                    </Badge>
+                  </div>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
 

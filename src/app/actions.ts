@@ -109,7 +109,13 @@ export async function saveLockPickAction(formData: FormData) {
     throw new Error("Select a line for Lock of the Day.");
   }
 
-  await saveLockPick(viewer.id, selectionId);
+  const noteRaw = formData.get("note")?.toString()?.trim();
+  if (noteRaw && noteRaw.length > 140) {
+    throw new Error("Note must be 140 characters or fewer.");
+  }
+  const note = noteRaw || undefined;
+
+  await saveLockPick(viewer.id, selectionId, note);
   revalidatePath("/today");
   revalidatePath("/leaderboards");
 }

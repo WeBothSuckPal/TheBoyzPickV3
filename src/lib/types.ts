@@ -171,6 +171,19 @@ export interface LockPickView {
   bookmaker: string;
   quoteTimestamp: string;
   result: BetLegResult;
+  note?: string;
+  createdAt: string;
+}
+
+export interface WeekLockFeedEntry {
+  id: string;
+  displayName: string;
+  selectionTeam: string;
+  selectionSide: SelectionSide;
+  spread: number;
+  americanOdds: number;
+  result: BetLegResult;
+  note?: string;
   createdAt: string;
 }
 
@@ -233,6 +246,7 @@ export interface MemberSnapshot {
   lockPick?: LockPickView;
   leaderboards: LeaderboardEntry[];
   rivalryBoard: RivalryEntry[];
+  weekLockFeed: WeekLockFeedEntry[];
   activity: ActivityItem[];
   settings: AppSettings;
   mode: "demo" | "live";

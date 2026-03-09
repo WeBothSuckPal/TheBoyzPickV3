@@ -266,6 +266,7 @@ export const lockPicks = pgTable(
       .defaultNow(),
     weekKey: text("week_key").notNull(),
     result: betLegResultEnum("result").notNull().default("pending"),
+    note: text("note"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
