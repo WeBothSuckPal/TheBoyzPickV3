@@ -22,7 +22,7 @@ export const leagueProviders = {
 } as const;
 
 export const defaultSettings: AppSettings = {
-  enabledLeagues: ["NFL", "NBA", "MLB", "NHL", "NCAAF", "NCAAB", "WNBA"],
+  enabledLeagues: ["NFL", "NCAAF"],
   primaryBookmaker: process.env.PRIMARY_BOOKMAKER ?? "draftkings",
   minStakeCents: 500,
   maxStakeCents: 20000,
