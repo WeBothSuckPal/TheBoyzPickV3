@@ -21,11 +21,32 @@ export default async function SlipsPage({
   const selectionOptions = snapshot.games
     .filter((game) => game.status === "scheduled" && new Date(game.commenceTime) > now)
     .flatMap((game) =>
-      game.options.map((option) => ({
-        value: option.id,
-        label: `${game.league} | ${option.team} ${formatSpread(option.spread)} (${formatOdds(option.americanOdds)})`,
-      })),
+      game.options.map((option) => {
+        const pickLabel =
+          option.market === "h2h"
+            ? `${option.team} ML`
+            : option.market === "totals"
+              ? `${option.team} ${option.spread}`
+              : `${option.team} ${formatSpread(option.spread)}`;
+        return {
+          value: option.id,
+          label: `${game.league} | ${pickLabel} (${formatOdds(option.americanOdds)})`,
+        };
+      }),
     );
+
+  const legNames = [
+    "selectionOne",
+    "selectionTwo",
+    "selectionThree",
+    "selectionFour",
+    "selectionFive",
+    "selectionSix",
+    "selectionSeven",
+    "selectionEight",
+    "selectionNine",
+    "selectionTen",
+  ];
 
   return (
     <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
@@ -33,7 +54,7 @@ export default async function SlipsPage({
         <CardHeader>
           <CardTitle>Build slip</CardTitle>
           <CardDescription>
-            Straight bets or parlays up to four legs. One side per game.
+            Straight bets or parlays up to ten legs. One side per game.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -43,24 +64,16 @@ export default async function SlipsPage({
             </div>
           ) : null}
           <form action={placeSlipAction} className="space-y-4">
-            {[1, 2, 3, 4].map((index) => (
+            {legNames.map((name, index) => (
               <select
-                key={index}
-                name={
-                  index === 1
-                    ? "selectionOne"
-                    : index === 2
-                      ? "selectionTwo"
-                      : index === 3
-                        ? "selectionThree"
-                        : "selectionFour"
-                }
+                key={name}
+                name={name}
                 className="h-11 w-full rounded-2xl border border-white/12 bg-black/15 px-4 text-sm text-white outline-none"
                 defaultValue=""
               >
-                <option value="">{index === 1 ? "Required selection" : "Optional leg"}</option>
+                <option value="">{index === 0 ? "Required selection" : "Optional leg"}</option>
                 {selectionOptions.map((option) => (
-                  <option key={`${index}_${option.value}`} value={option.value}>
+                  <option key={`${name}_${option.value}`} value={option.value}>
                     {option.label}
                   </option>
                 ))}

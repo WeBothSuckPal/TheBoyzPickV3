@@ -6,6 +6,7 @@ import {
   calculateParlayPayout,
   calculateStraightPayout,
   scoreSpreadLeg,
+  scoreTotalsLeg,
   settleSlip,
 } from "@/lib/betting";
 import {
@@ -834,6 +835,7 @@ async function buildGameCards(
       side: row.selectionSide as GameOption["side"],
       spread: numericToNumber(row.point),
       americanOdds: row.americanOdds,
+      market: row.market as GameOption["market"],
       bookmaker: row.bookmakerKey,
       quoteTimestamp: toIso(row.quoteTimestamp)!,
       intelligence: buildSpreadIntelligence({
@@ -1120,6 +1122,7 @@ export async function syncViewerLive(input: {
         displayName: input.displayName,
         imageUrl: input.imageUrl,
         role: bootstrappedRole,
+        status: bootstrappedRole === "owner_admin" ? "active" : "suspended",
       })
       .returning();
     row = inserted[0]!;
@@ -1910,7 +1913,7 @@ export async function runOddsSyncLive() {
         event.outcomes.map((outcome) => ({
           gameId,
           bookmakerKey: settings.primaryBookmaker,
-          market: "spreads",
+          market: outcome.market,
           selectionTeam: outcome.team,
           selectionSide: outcome.side,
           point: String(outcome.spread),
@@ -1923,11 +1926,13 @@ export async function runOddsSyncLive() {
         gameId: gameId!,
         leagueSlug: league,
         bookmakerKey: settings.primaryBookmaker,
-        outcomes: event.outcomes.map((outcome) => ({
-          side: outcome.side,
-          spread: outcome.spread,
-          americanOdds: outcome.americanOdds,
-        })),
+        outcomes: event.outcomes
+          .filter((o) => o.market === "spreads")
+          .map((outcome) => ({
+            side: outcome.side as "home" | "away",
+            spread: outcome.spread,
+            americanOdds: outcome.americanOdds,
+          })),
       });
 
       updatedQuotes += event.outcomes.length;
@@ -2054,14 +2059,23 @@ export async function runSettlementSweepLive() {
           quoteTimestamp: toIso(row.quoteTimestamp)!,
           result:
             game?.status === "final"
-              ? scoreSpreadLeg(
-                  {
-                    homeScore: game.homeScore ?? undefined,
-                    awayScore: game.awayScore ?? undefined,
-                  },
-                  row.selectionSide as BetLegView["selectionSide"],
-                  numericToNumber(row.spread),
-                )
+              ? row.selectionSide === "over" || row.selectionSide === "under"
+                ? scoreTotalsLeg(
+                    {
+                      homeScore: game.homeScore ?? undefined,
+                      awayScore: game.awayScore ?? undefined,
+                    },
+                    row.selectionSide as "over" | "under",
+                    numericToNumber(row.spread),
+                  )
+                : scoreSpreadLeg(
+                    {
+                      homeScore: game.homeScore ?? undefined,
+                      awayScore: game.awayScore ?? undefined,
+                    },
+                    row.selectionSide as "home" | "away",
+                    numericToNumber(row.spread),
+                  )
               : game?.status === "cancelled" || game?.status === "postponed"
                 ? "void"
               : "pending",

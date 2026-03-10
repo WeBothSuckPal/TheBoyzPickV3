@@ -25,7 +25,7 @@ const topUpSchema = z.object({
 
 const slipSchema = z.object({
   stake: z.coerce.number().int().min(5).max(200),
-  selectionIds: z.array(z.string()).min(1).max(4),
+  selectionIds: z.array(z.string()).min(1).max(10),
 });
 
 export async function submitTopUpRequestAction(formData: FormData) {
@@ -63,11 +63,18 @@ export async function placeSlipAction(formData: FormData) {
   });
 
   const selectionIds = [
-    formData.get("selectionOne")?.toString(),
-    formData.get("selectionTwo")?.toString(),
-    formData.get("selectionThree")?.toString(),
-    formData.get("selectionFour")?.toString(),
-  ].filter((value): value is string => Boolean(value));
+    "selectionOne",
+    "selectionTwo",
+    "selectionThree",
+    "selectionFour",
+    "selectionFive",
+    "selectionSix",
+    "selectionSeven",
+    "selectionEight",
+    "selectionNine",
+    "selectionTen",
+  ].map((name) => formData.get(name)?.toString())
+    .filter((value): value is string => Boolean(value));
 
   const parsed = slipSchema.parse({
     stake: formData.get("stake"),

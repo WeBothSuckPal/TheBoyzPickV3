@@ -21,7 +21,8 @@ export type BetSlipType = "straight" | "parlay";
 export type BetSlipStatus = "open" | "won" | "lost" | "push" | "void";
 export type BetLegResult = "pending" | "win" | "loss" | "push" | "void";
 export type TopUpStatus = "pending" | "paid" | "rejected";
-export type SelectionSide = "home" | "away";
+export type SelectionSide = "home" | "away" | "over" | "under";
+export type BetMarket = "h2h" | "spreads" | "totals";
 export type ConfidenceBand = "low" | "medium" | "high";
 export type OpsSeverity = "info" | "warning" | "critical";
 export type OpsAutopilotMode = "hourly" | "nightly" | "manual";
@@ -101,6 +102,7 @@ export interface GameOption {
   side: SelectionSide;
   spread: number;
   americanOdds: number;
+  market: BetMarket;
   bookmaker: string;
   quoteTimestamp: string;
   intelligence?: BetIntelligence;
@@ -127,6 +129,7 @@ export interface BetLegView {
   selectionSide: SelectionSide;
   spread: number;
   americanOdds: number;
+  market?: BetMarket;
   bookmaker: string;
   quoteTimestamp: string;
   result: BetLegResult;

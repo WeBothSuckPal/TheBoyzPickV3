@@ -57,6 +57,25 @@ export function scoreSpreadLeg(
   return "push";
 }
 
+export function scoreTotalsLeg(
+  game: Pick<GameCard, "homeScore" | "awayScore">,
+  selectionSide: "over" | "under",
+  totalLine: number,
+): BetLegResult {
+  if (typeof game.homeScore !== "number" || typeof game.awayScore !== "number") {
+    return "pending";
+  }
+
+  const combined = game.homeScore + game.awayScore;
+
+  if (combined === totalLine) {
+    return "push";
+  }
+
+  const isOver = combined > totalLine;
+  return (selectionSide === "over") === isOver ? "win" : "loss";
+}
+
 export function settleSlip(
   type: BetSlipType,
   stakeCents: number,

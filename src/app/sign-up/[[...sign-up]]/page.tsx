@@ -35,24 +35,6 @@ export default async function SignUpPage(props: {
     );
   }
 
-  if (isProduction() && !invitationTicket) {
-    return (
-      <main className="mx-auto flex min-h-screen max-w-xl items-center px-4 py-8">
-        <Card className="w-full">
-          <CardHeader>
-            <CardTitle>Invitation required</CardTitle>
-            <CardDescription>
-              This club is invite-only. Use your email invitation link to complete sign-up.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-sm text-[var(--muted-foreground)]">
-            Ask the commissioner to resend your invite if you do not have an active invitation.
-          </CardContent>
-        </Card>
-      </main>
-    );
-  }
-
   return (
     <main className="mx-auto flex min-h-screen max-w-xl items-center justify-center px-4 py-8">
       <SignUp />

@@ -95,7 +95,7 @@ export default async function AdminPage({
         <Card>
           <CardHeader>
             <CardTitle>Members</CardTitle>
-            <CardDescription>Private club roster and account roles.</CardDescription>
+            <CardDescription>Private club roster. Approve new sign-ups or manage existing members.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {admin.members.map((member) => (
@@ -133,7 +133,7 @@ export default async function AdminPage({
                         value={member.status === "active" ? "suspended" : "active"}
                       />
                       <Button type="submit" size="sm" variant="secondary">
-                        {member.status === "active" ? "Suspend" : "Reactivate"}
+                        {member.status === "active" ? "Suspend" : "Approve"}
                       </Button>
                     </form>
                   </div>
