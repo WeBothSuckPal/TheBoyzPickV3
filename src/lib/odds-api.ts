@@ -39,9 +39,10 @@ export interface OddsSyncEvent {
   awayTeam: string;
   outcomes: Array<{
     team: string;
-    side: "home" | "away";
+    side: "home" | "away" | "over" | "under";
     spread: number;
     americanOdds: number;
+    market: "h2h" | "spreads" | "totals";
     bookmaker: string;
     quoteTimestamp: string;
   }>;
@@ -92,26 +93,60 @@ export function normalizeOddsEvent(
   bookmaker: string,
   observedAt = new Date(),
 ): OddsSyncEvent | null {
-  const spreadMarket = event.bookmakers?.[0]?.markets?.find(
-    (market) => market.key === "spreads",
-  );
+  const bkMarkets = event.bookmakers?.[0]?.markets ?? [];
+  const timestamp = observedAt.toISOString();
+  const outcomes: OddsSyncEvent["outcomes"] = [];
 
-  if (!spreadMarket) {
-    return null;
+  const spreadMarket = bkMarkets.find((m) => m.key === "spreads");
+  if (spreadMarket) {
+    for (const o of spreadMarket.outcomes) {
+      if (typeof o.point === "number") {
+        outcomes.push({
+          team: o.name,
+          side: o.name === event.home_team ? "home" : "away",
+          spread: o.point,
+          americanOdds: o.price,
+          market: "spreads",
+          bookmaker,
+          quoteTimestamp: timestamp,
+        });
+      }
+    }
   }
 
-  const outcomes = spreadMarket.outcomes
-    .filter((outcome) => typeof outcome.point === "number")
-    .map((outcome) => ({
-      team: outcome.name,
-      side: outcome.name === event.home_team ? ("home" as const) : ("away" as const),
-      spread: Number(outcome.point ?? 0),
-      americanOdds: outcome.price,
-      bookmaker,
-      quoteTimestamp: observedAt.toISOString(),
-    }));
+  const h2hMarket = bkMarkets.find((m) => m.key === "h2h");
+  if (h2hMarket) {
+    for (const o of h2hMarket.outcomes) {
+      outcomes.push({
+        team: o.name,
+        side: o.name === event.home_team ? "home" : "away",
+        spread: 0,
+        americanOdds: o.price,
+        market: "h2h",
+        bookmaker,
+        quoteTimestamp: timestamp,
+      });
+    }
+  }
 
-  if (outcomes.length < 2) {
+  const totalsMarket = bkMarkets.find((m) => m.key === "totals");
+  if (totalsMarket) {
+    for (const o of totalsMarket.outcomes) {
+      if (typeof o.point === "number") {
+        outcomes.push({
+          team: o.name,
+          side: o.name.toLowerCase() as "over" | "under",
+          spread: o.point,
+          americanOdds: o.price,
+          market: "totals",
+          bookmaker,
+          quoteTimestamp: timestamp,
+        });
+      }
+    }
+  }
+
+  if (outcomes.length === 0) {
     return null;
   }
 
@@ -171,7 +206,7 @@ export async function fetchLeagueOdds(
   const params = new URLSearchParams({
     apiKey,
     regions: "us",
-    markets: "spreads",
+    markets: "h2h,spreads,totals",
     bookmakers: bookmaker,
     oddsFormat: "american",
     dateFormat: "iso",
