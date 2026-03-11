@@ -1041,7 +1041,7 @@ async function computeLeaderboards(): Promise<{
   return { leaderboards, rivalryBoard };
 }
 
-async function getActivityFeed() {
+export async function getActivityFeedLive() {
   const rows = await dbOrThrow()
     .select()
     .from(adminAuditLogs)
@@ -1203,7 +1203,7 @@ export async function getMemberSnapshotLive(viewer: ViewerProfile): Promise<Memb
         )
         .limit(1),
       computeLeaderboards(),
-      getActivityFeed(),
+      getActivityFeedLive(),
       getWeekLockFeedLive(),
     ]);
 

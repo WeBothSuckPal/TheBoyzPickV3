@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { SignIn } from "@clerk/nextjs";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +25,14 @@ export default function SignInPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-xl items-center justify-center px-4 py-8">
+    <main className="mx-auto flex min-h-screen max-w-xl flex-col items-center justify-center gap-4 px-4 py-8">
+      <Link
+        href="/"
+        className="flex items-center gap-2 text-sm text-[var(--muted-foreground)] transition-colors hover:text-white"
+      >
+        <ArrowLeft className="size-4" />
+        Back to home
+      </Link>
       <SignIn />
     </main>
   );
