@@ -47,7 +47,7 @@ export function AppShell({
                 Run the card. Track the chaos.
               </h1>
               <p className="max-w-2xl text-sm leading-6 text-[var(--muted-foreground)]">
-                Invite-only spreads club with locked lines, club-credit bankrolls,
+                Private picks club with locked lines, club-credit bankrolls,
                 rivalry boards, and commissioner controls.
               </p>
             </div>
