@@ -24,6 +24,8 @@ import {
   setMaintenanceModeLive,
   syncViewerLive,
   updateMemberAccessLive,
+  getActivityFeedLive,
+  getWeekLockFeedLive,
 } from "@/lib/live-clubhouse";
 import { getWeekKey, isDateOnOrAfterWeekKey } from "@/lib/time";
 import { makeId } from "@/lib/utils";
@@ -1189,4 +1191,35 @@ export async function getPublicLeaderboards(): Promise<{
     leaderboards: buildLeaderboards(),
     rivalryBoard: buildRivalryBoard(),
   };
+}
+
+export async function getPublicFeed(): Promise<ActivityItem[]> {
+  if (isDatabaseConfigured()) {
+    return getActivityFeedLive();
+  }
+
+  return getStore().activity;
+}
+
+export async function getPublicWeekLocks(): Promise<WeekLockFeedEntry[]> {
+  if (isDatabaseConfigured()) {
+    return getWeekLockFeedLive();
+  }
+
+  const store = getStore();
+  const weekKey = currentWeekKey();
+  return store.lockPicks
+    .filter((pick) => pick.weekKey === weekKey)
+    .sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt))
+    .map((pick) => ({
+      id: pick.id,
+      displayName: store.users.find((u) => u.id === pick.userId)?.displayName ?? "Member",
+      selectionTeam: pick.selectionTeam,
+      selectionSide: pick.selectionSide,
+      spread: pick.spread,
+      americanOdds: pick.americanOdds,
+      result: pick.result,
+      note: pick.note,
+      createdAt: pick.createdAt,
+    }));
 }
