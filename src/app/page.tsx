@@ -39,8 +39,8 @@ export default async function Home(props: {
             A private sportsbook-style club for you and the boyz.
           </h1>
           <p className="max-w-2xl text-lg leading-8 text-[var(--muted-foreground)]">
-            Daily spreads, locked slips, wallet bragging rights, Lock of the Day, and
-            commissioner control in one invite-only home base.
+            Daily spreads, moneylines, over/unders, locked slips, wallet bragging rights, Lock of the Day, and
+            commissioner control in one home base.
           </p>
           <div className="flex flex-wrap gap-4">
             <Button asChild size="lg">
@@ -49,13 +49,18 @@ export default async function Home(props: {
                 <ArrowRight className="ml-2 size-4" />
               </Link>
             </Button>
+            {!viewer && isClerkConfigured() ? (
+              <Button asChild size="lg" variant="secondary">
+                <Link href="/sign-up">Request access</Link>
+              </Button>
+            ) : null}
             <Button asChild size="lg" variant="secondary">
               <Link href="/leaderboards">Preview leaderboards</Link>
             </Button>
           </div>
           <p className="text-sm text-[var(--muted-foreground)]">
             {isClerkConfigured()
-              ? "Access is restricted to invited users. Manage invitations from Clerk."
+              ? "Sign up for an account — the commissioner approves access before you can play."
               : "Clerk is not configured yet, so the app is running with a seeded demo commissioner account."}
           </p>
           {setupStatus === "incomplete" ? (
@@ -75,10 +80,10 @@ export default async function Home(props: {
           </CardHeader>
           <CardContent className="grid gap-3">
             {[
-              "Straight bets and four-leg parlays",
+              "Straight bets and ten-leg parlays",
+              "Spread, moneyline, and over/under markets",
               "One Lock of the Day per member",
               "Manual bankroll approvals with full ledger history",
-              "Admin sync and settlement controls",
             ].map((item) => (
               <div
                 key={item}
@@ -95,9 +100,9 @@ export default async function Home(props: {
         {[
           {
             icon: Shield,
-            title: "Invite-only access",
+            title: "Approval-based access",
             description:
-              "Private club with role-based access and a commissioner-owned control panel.",
+              "Sign up freely — the commissioner approves each member before they can place a bet.",
           },
           {
             icon: Wallet,
