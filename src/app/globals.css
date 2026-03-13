@@ -51,3 +51,8 @@ input,
 button {
   font: inherit;
 }
+
+@keyframes border-glow {
+  0%, 100% { border-color: rgba(243, 180, 59, 0.15); }
+  50% { border-color: rgba(243, 180, 59, 0.35); }
+}
