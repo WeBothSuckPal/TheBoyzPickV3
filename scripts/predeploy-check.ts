@@ -50,8 +50,8 @@ function run() {
     const vercelConfig = readJson<{ crons?: VercelCron[] }>(vercelConfigPath);
     const configuredCrons = vercelConfig.crons ?? [];
     const expectedCrons: VercelCron[] = [
-      { path: "/api/cron/odds-sync", schedule: "*/15 * * * *" },
-      { path: "/api/cron/settle", schedule: "*/5 * * * *" },
+      { path: "/api/cron/odds-sync", schedule: "0 */2 * * *" },
+      { path: "/api/cron/settle", schedule: "0 * * * *" },
       { path: "/api/cron/ai-hourly", schedule: "5 * * * *" },
       { path: "/api/cron/ai-nightly", schedule: "17 4 * * *" },
     ];

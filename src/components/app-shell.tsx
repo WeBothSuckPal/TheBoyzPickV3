@@ -35,9 +35,9 @@ export function AppShell({
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3">
-              <span className="rounded-full bg-[var(--accent)]/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--accent)]">
+              <Link href="/" className="rounded-full bg-[var(--accent)]/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--accent)] transition hover:bg-[var(--accent)]/30">
                 {appName}
-              </span>
+              </Link>
               <span className="rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
                 {mode === "live" ? "Live stack" : "Demo mode"}
               </span>
@@ -74,7 +74,7 @@ export function AppShell({
         </div>
       </header>
 
-      <nav className="grid grid-cols-2 gap-3 md:grid-cols-5">
+      <nav className={cn("grid grid-cols-2 gap-3", viewer.role === "owner_admin" ? "md:grid-cols-5" : "md:grid-cols-4")}>
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = pathname.startsWith(item.href);

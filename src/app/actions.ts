@@ -238,11 +238,21 @@ export async function updateMemberAccessAction(formData: FormData) {
   });
 
   const targetUserId = formData.get("targetUserId")?.toString();
-  const role = formData.get("role")?.toString() as "owner_admin" | "member" | undefined;
-  const status = formData.get("status")?.toString() as "active" | "suspended" | undefined;
+  const roleRaw = formData.get("role")?.toString();
+  const statusRaw = formData.get("status")?.toString();
+
+  const validRoles = ["owner_admin", "member"] as const;
+  const validStatuses = ["active", "suspended"] as const;
+
+  const role = roleRaw && validRoles.includes(roleRaw as (typeof validRoles)[number])
+    ? (roleRaw as (typeof validRoles)[number])
+    : undefined;
+  const status = statusRaw && validStatuses.includes(statusRaw as (typeof validStatuses)[number])
+    ? (statusRaw as (typeof validStatuses)[number])
+    : undefined;
 
   if (!targetUserId || (!role && !status)) {
-    throw new Error("Missing access update fields.");
+    throw new Error("Missing or invalid access update fields.");
   }
 
   await updateMemberAccess({

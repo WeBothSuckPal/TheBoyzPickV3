@@ -3,21 +3,9 @@ import { ArrowLeft } from "lucide-react";
 import { SignUp } from "@clerk/nextjs";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { isClerkConfigured, isProduction } from "@/lib/env";
+import { isClerkConfigured } from "@/lib/env";
 
-function resolveTicket(
-  value: string | string[] | undefined,
-) {
-  return Array.isArray(value) ? value[0] : value;
-}
-
-export default async function SignUpPage(props: {
-  searchParams?:
-    | Promise<Record<string, string | string[] | undefined>>
-    | Record<string, string | string[] | undefined>;
-}) {
-  const searchParams = await Promise.resolve(props.searchParams ?? {});
-  const invitationTicket = resolveTicket(searchParams.__clerk_ticket ?? searchParams.ticket);
+export default async function SignUpPage() {
 
   if (!isClerkConfigured()) {
     return (
