@@ -748,6 +748,7 @@ export async function placeSlip(input: {
   userId: string;
   stakeCents: number;
   selectionIds: string[];
+  idempotencyKey?: string;
 }) {
   if (isDatabaseConfigured()) {
     return placeSlipLive(input);

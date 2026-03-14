@@ -1,8 +1,6 @@
 import { requireViewer } from "@/lib/auth";
-import { updateProfileAction } from "@/app/actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { ProfileForm } from "./profile-form";
 
 export default async function ProfilePage({
   searchParams,
@@ -30,58 +28,19 @@ export default async function ProfilePage({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={updateProfileAction} className="space-y-5">
-            <div className="space-y-2">
-              <label htmlFor="displayName" className="text-sm font-medium text-white">
-                Real Name <span className="text-[var(--accent)]">*</span>
-              </label>
-              <Input
-                id="displayName"
-                name="displayName"
-                defaultValue={viewer.displayName === "Club Member" ? "" : viewer.displayName}
-                placeholder="Your full name (admin-only)"
-                required
-                minLength={2}
-                maxLength={50}
-              />
-              <p className="text-xs text-[var(--muted-foreground)]">
-                Only the commissioner can see this. Used for identity verification.
-              </p>
-            </div>
+          <ProfileForm displayName={viewer.displayName} nickname={viewer.nickname} />
 
-            <div className="space-y-2">
-              <label htmlFor="nickname" className="text-sm font-medium text-white">
-                Nickname <span className="text-[var(--muted-foreground)]">(optional)</span>
-              </label>
-              <Input
-                id="nickname"
-                name="nickname"
-                defaultValue={viewer.nickname ?? ""}
-                placeholder="What other members see"
-                minLength={2}
-                maxLength={20}
-              />
-              <p className="text-xs text-[var(--muted-foreground)]">
-                Shown on leaderboards, lock feed, and rivalry boards. Leave blank to use your real name.
-              </p>
+          <div className="mt-5 rounded-2xl border border-white/10 bg-black/15 px-4 py-3">
+            <div className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+              Preview
             </div>
-
-            <div className="rounded-2xl border border-white/10 bg-black/15 px-4 py-3">
-              <div className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
-                Preview
-              </div>
-              <div className="mt-1 text-sm text-white">
-                Other members see you as: <strong>{viewer.nickname ?? viewer.displayName}</strong>
-              </div>
-              <div className="text-xs text-[var(--muted-foreground)]">
-                (Updates after saving)
-              </div>
+            <div className="mt-1 text-sm text-white">
+              Other members see you as: <strong>{viewer.nickname ?? viewer.displayName}</strong>
             </div>
-
-            <Button type="submit" className="w-full">
-              Save Profile
-            </Button>
-          </form>
+            <div className="text-xs text-[var(--muted-foreground)]">
+              (Updates after saving)
+            </div>
+          </div>
         </CardContent>
       </Card>
 

@@ -1,11 +1,10 @@
-import { approveTopUpAction, submitTopUpRequestAction } from "@/app/actions";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { getAdminSnapshot, getMemberSnapshot } from "@/lib/clubhouse";
 import { requireViewer } from "@/lib/auth";
 import { formatCompactDate, formatCurrency, toTitleCase } from "@/lib/utils";
+import { TopUpForm } from "./top-up-form";
+import { ApproveButton } from "./approve-button";
 
 export const dynamic = "force-dynamic";
 
@@ -45,13 +44,7 @@ export default async function WalletPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form action={submitTopUpRequestAction} className="space-y-3">
-              <Input name="amount" type="number" min={5} max={500} placeholder="Amount in dollars" />
-              <Input name="note" placeholder="Optional note for the commissioner" />
-              <Button type="submit" className="w-full">
-                Submit request
-              </Button>
-            </form>
+            <TopUpForm />
           </CardContent>
         </Card>
 
@@ -117,22 +110,18 @@ export default async function WalletPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               {admin.pendingTopUps.map((request) => (
-                <form
+                <div
                   key={request.id}
-                  action={approveTopUpAction}
                   className="flex flex-col gap-3 rounded-3xl border border-white/10 bg-black/18 p-4 md:flex-row md:items-center md:justify-between"
                 >
-                  <input type="hidden" name="requestId" value={request.id} />
                   <div>
                     <div className="font-semibold text-white">{formatCurrency(request.amountCents)}</div>
                     <div className="text-sm text-[var(--muted-foreground)]">
                       {formatCompactDate(request.requestedAt)}
                     </div>
                   </div>
-                  <Button type="submit" size="sm">
-                    Approve
-                  </Button>
-                </form>
+                  <ApproveButton requestId={request.id} amountCents={request.amountCents} />
+                </div>
               ))}
             </CardContent>
           </Card>

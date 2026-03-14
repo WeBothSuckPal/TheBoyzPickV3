@@ -1401,6 +1401,7 @@ export async function placeSlipLive(input: {
   userId: string;
   stakeCents: number;
   selectionIds: string[];
+  idempotencyKey?: string;
 }) {
   const db = dbOrThrow();
   const settings = await loadSettingsLive();
@@ -1487,7 +1488,7 @@ export async function placeSlipLive(input: {
       input.stakeCents,
       "stake_hold",
       "Placed betting slip",
-      inserted[0]!.id,
+      input.idempotencyKey ?? inserted[0]!.id,
     );
 
     await tx.insert(betLegs).values(

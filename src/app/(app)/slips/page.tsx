@@ -1,20 +1,13 @@
-import { placeSlipAction } from "@/app/actions";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { requireViewer } from "@/lib/auth";
 import { getMemberSnapshot } from "@/lib/clubhouse";
 import { formatCompactDate, formatCurrency, formatOdds, formatSpread } from "@/lib/utils";
+import { SlipBuilder } from "./slip-builder";
 
 export const dynamic = "force-dynamic";
 
-export default async function SlipsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string }>;
-}) {
-  const { error } = await searchParams;
+export default async function SlipsPage() {
   const viewer = await requireViewer();
   const snapshot = await getMemberSnapshot(viewer);
   const now = new Date();
@@ -31,22 +24,11 @@ export default async function SlipsPage({
         return {
           value: option.id,
           label: `${game.league} | ${pickLabel} (${formatOdds(option.americanOdds)})`,
+          americanOdds: option.americanOdds,
+          gameId: game.id,
         };
       }),
     );
-
-  const legNames = [
-    "selectionOne",
-    "selectionTwo",
-    "selectionThree",
-    "selectionFour",
-    "selectionFive",
-    "selectionSix",
-    "selectionSeven",
-    "selectionEight",
-    "selectionNine",
-    "selectionTen",
-  ];
 
   return (
     <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
@@ -58,36 +40,12 @@ export default async function SlipsPage({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {error ? (
-            <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-              {error}
-            </div>
-          ) : null}
-          <form action={placeSlipAction} className="space-y-4">
-            {legNames.map((name, index) => (
-              <select
-                key={name}
-                name={name}
-                className="h-11 w-full rounded-2xl border border-white/12 bg-black/15 px-4 text-sm text-white outline-none"
-                defaultValue=""
-              >
-                <option value="">{index === 0 ? "Required selection" : "Optional leg"}</option>
-                {selectionOptions.map((option) => (
-                  <option key={`${name}_${option.value}`} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            ))}
-
-            <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-              <Input name="stake" type="number" min={5} max={200} placeholder="Stake in dollars" />
-              <Button type="submit">Place slip</Button>
-            </div>
-            <p className="text-sm text-[var(--muted-foreground)]">
-              Limits: ${snapshot.settings.minStakeCents / 100} to ${snapshot.settings.maxStakeCents / 100}.
-            </p>
-          </form>
+          <SlipBuilder
+            selectionOptions={selectionOptions}
+            walletBalanceCents={snapshot.wallet.balanceCents}
+            minStakeCents={snapshot.settings.minStakeCents}
+            maxStakeCents={snapshot.settings.maxStakeCents}
+          />
         </CardContent>
       </Card>
 

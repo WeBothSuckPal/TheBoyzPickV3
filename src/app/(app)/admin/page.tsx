@@ -1,25 +1,13 @@
-import {
-  runAiOpsAutopilotAction,
-  runOddsSyncAction,
-  runSettlementSweepAction,
-  setMaintenanceModeAction,
-  updateMemberAccessAction,
-} from "@/app/actions";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireAdmin } from "@/lib/auth";
 import { getAdminSnapshot, getMemberSnapshot } from "@/lib/clubhouse";
 import { formatCompactDate, formatCurrency } from "@/lib/utils";
+import { AdminOperations, MemberActions } from "./admin-actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string }>;
-}) {
-  const { error } = await searchParams;
+export default async function AdminPage() {
   const viewer = await requireAdmin();
   const snapshot = await getMemberSnapshot(viewer);
   const admin = await getAdminSnapshot();
@@ -27,11 +15,6 @@ export default async function AdminPage({
   return (
     <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
       <div className="grid gap-6">
-        {error ? (
-          <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-            {error}
-          </div>
-        ) : null}
         <Card>
           <CardHeader>
             <CardTitle>Operations</CardTitle>
@@ -39,56 +22,12 @@ export default async function AdminPage({
               Run odds syncs, settlement sweeps, and inspect launch settings.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <form action={runOddsSyncAction}>
-              <Button type="submit" className="w-full">
-                Run odds sync
-              </Button>
-            </form>
-            <form action={runSettlementSweepAction}>
-              <Button type="submit" variant="secondary" className="w-full">
-                Run settlement sweep
-              </Button>
-            </form>
-            <form action={runAiOpsAutopilotAction}>
-              <input type="hidden" name="mode" value="hourly" />
-              <Button type="submit" variant="secondary" className="w-full">
-                Run AI autopilot (hourly)
-              </Button>
-            </form>
-            <form action={runAiOpsAutopilotAction}>
-              <input type="hidden" name="mode" value="nightly" />
-              <Button type="submit" variant="secondary" className="w-full">
-                Run AI autopilot (nightly)
-              </Button>
-            </form>
-            {snapshot.mode === "live" ? (
-              <form action={setMaintenanceModeAction}>
-                <input
-                  type="hidden"
-                  name="enabled"
-                  value={snapshot.settings.maintenanceMode ? "false" : "true"}
-                />
-                <Button type="submit" variant="secondary" className="w-full">
-                  {snapshot.settings.maintenanceMode
-                    ? "Disable maintenance mode"
-                    : "Enable maintenance mode"}
-                </Button>
-              </form>
-            ) : (
-              <div className="rounded-3xl border border-white/10 bg-black/18 px-4 py-3 text-sm text-[var(--muted-foreground)]">
-                Maintenance and member-access controls activate once the app is connected to the live database.
-              </div>
-            )}
-            <div className="rounded-[28px] border border-white/10 bg-black/18 p-4 text-sm leading-7 text-[var(--muted-foreground)]">
-              <div>Primary bookmaker: {snapshot.settings.primaryBookmaker}</div>
-              <div>
-                Stakes: {formatCurrency(snapshot.settings.minStakeCents)} to{" "}
-                {formatCurrency(snapshot.settings.maxStakeCents)}
-              </div>
-              <div>Max open slips: {snapshot.settings.maxOpenSlipsPerUser}</div>
-              <div>Maintenance mode: {snapshot.settings.maintenanceMode ? "On" : "Off"}</div>
-            </div>
+          <CardContent>
+            <AdminOperations
+              mode={snapshot.mode}
+              maintenanceMode={snapshot.settings.maintenanceMode}
+              settings={snapshot.settings}
+            />
           </CardContent>
         </Card>
 
@@ -119,32 +58,7 @@ export default async function AdminPage({
                     {member.role} | {member.status}
                   </div>
                 </div>
-                {snapshot.mode === "live" && member.id !== viewer.id ? (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <form action={updateMemberAccessAction}>
-                      <input type="hidden" name="targetUserId" value={member.id} />
-                      <input
-                        type="hidden"
-                        name="role"
-                        value={member.role === "owner_admin" ? "member" : "owner_admin"}
-                      />
-                      <Button type="submit" size="sm" variant="secondary">
-                        {member.role === "owner_admin" ? "Demote" : "Promote"}
-                      </Button>
-                    </form>
-                    <form action={updateMemberAccessAction}>
-                      <input type="hidden" name="targetUserId" value={member.id} />
-                      <input
-                        type="hidden"
-                        name="status"
-                        value={member.status === "active" ? "suspended" : "active"}
-                      />
-                      <Button type="submit" size="sm" variant="secondary">
-                        {member.status === "active" ? "Suspend" : "Approve"}
-                      </Button>
-                    </form>
-                  </div>
-                ) : null}
+                <MemberActions member={member} viewerId={viewer.id} isLive={snapshot.mode === "live"} />
               </div>
             ))}
           </CardContent>

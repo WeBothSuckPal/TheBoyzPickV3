@@ -1,11 +1,9 @@
-import { saveLockPickAction } from "@/app/actions";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { requireViewer } from "@/lib/auth";
 import { getMemberSnapshot } from "@/lib/clubhouse";
 import { formatGameTime, formatOdds, formatSpread } from "@/lib/utils";
+import { LockPickForm } from "./lock-pick-form";
 
 export const dynamic = "force-dynamic";
 
@@ -100,33 +98,16 @@ export default async function TodayPage() {
               </div>
             ) : null}
 
-            <form action={saveLockPickAction} className="space-y-3">
-              <select
-                name="selectionId"
-                className="h-11 w-full rounded-2xl border border-white/12 bg-black/15 px-4 text-sm text-white outline-none"
-                defaultValue={snapshot.lockPick?.selectionId ?? ""}
-              >
-                <option value="">Select a spread</option>
-                {snapshot.games.flatMap((game) =>
-                  game.options.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {game.league} | {option.team} {formatSpread(option.spread)} (
-                      {formatOdds(option.americanOdds)})
-                    </option>
-                  )),
-                )}
-              </select>
-              <Input
-                name="note"
-                type="text"
-                maxLength={140}
-                placeholder="Your reasoning… 140 chars max"
-                defaultValue={snapshot.lockPick?.note ?? ""}
-              />
-              <Button type="submit" className="w-full">
-                Save lock
-              </Button>
-            </form>
+            <LockPickForm
+              options={snapshot.games.flatMap((game) =>
+                game.options.map((option) => ({
+                  value: option.id,
+                  label: `${game.league} | ${option.team} ${formatSpread(option.spread)} (${formatOdds(option.americanOdds)})`,
+                })),
+              )}
+              currentSelectionId={snapshot.lockPick?.selectionId}
+              currentNote={snapshot.lockPick?.note}
+            />
           </CardContent>
         </Card>
 

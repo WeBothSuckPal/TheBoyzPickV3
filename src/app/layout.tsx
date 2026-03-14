@@ -4,6 +4,7 @@ import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 
 import { appName } from "@/lib/constants";
 import { isClerkConfigured } from "@/lib/env";
+import { ToastProvider } from "@/components/ui/toaster";
 import "./globals.css";
 
 const displayFont = Space_Grotesk({
@@ -32,7 +33,7 @@ export default function RootLayout({
     <body
       className={`${displayFont.variable} ${monoFont.variable} bg-[var(--background)] text-[var(--foreground)] antialiased`}
     >
-      {children}
+      <ToastProvider>{children}</ToastProvider>
     </body>
   );
 
