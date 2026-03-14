@@ -1053,7 +1053,6 @@ export async function getActivityFeedLive() {
     placed_slip: "A member placed a new pick.",
     created_lock_pick: "A new Lock of the Day landed.",
     updated_lock_pick: "A Lock of the Day was updated.",
-    ran_settlement_sweep: "Picks were graded and the board refreshed.",
   };
 
   return rows
@@ -1063,7 +1062,7 @@ export async function getActivityFeedLive() {
       message: publicMessages[row.action]!,
       createdAt: toIso(row.createdAt)!,
       tone:
-        row.action === "approved_top_up" || row.action === "ran_settlement_sweep"
+        row.action === "approved_top_up"
           ? ("good" as const)
           : ("neutral" as const),
     }));

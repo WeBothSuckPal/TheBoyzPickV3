@@ -6,12 +6,12 @@ const contentSecurityPolicy = [
   "frame-ancestors 'none'",
   "form-action 'self'",
   "object-src 'none'",
-  "script-src 'self' 'unsafe-inline' https://*.clerk.com https://*.clerk.accounts.dev https://clerk.theboyzpick.com https://vercel.live",
+  "script-src 'self' 'unsafe-inline' https://*.clerk.com https://*.clerk.accounts.dev https://clerk.theboyzpick.com https://challenges.cloudflare.com https://vercel.live",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://clerk.theboyzpick.com https://api.the-odds-api.com https://*.vercel-insights.com",
-  "frame-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://clerk.theboyzpick.com",
+  "connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://clerk.theboyzpick.com https://challenges.cloudflare.com https://api.the-odds-api.com https://*.vercel-insights.com",
+  "frame-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://clerk.theboyzpick.com https://challenges.cloudflare.com",
 ].join("; ");
 
 const nextConfig: NextConfig = {
@@ -40,11 +40,11 @@ const nextConfig: NextConfig = {
       },
       {
         key: "Cross-Origin-Opener-Policy",
-        value: "same-origin",
+        value: "same-origin-allow-popups",
       },
       {
         key: "Cross-Origin-Resource-Policy",
-        value: "same-origin",
+        value: "cross-origin",
       },
       {
         key: "Strict-Transport-Security",

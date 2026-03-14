@@ -93,7 +93,7 @@ export default async function Home() {
       {/* ── Section 1: Hero ── */}
       <section className="animate-[border-glow_4s_ease-in-out_infinite] rounded-[36px] border border-[var(--accent)]/15 bg-[var(--panel-strong)] p-8 text-center shadow-[0_24px_80px_rgba(0,0,0,0.3)] lg:p-16">
         {/* Logo */}
-        <div className="mx-auto mb-6 w-48 sm:w-56 lg:w-64">
+        <div className="mx-auto mb-6 w-56 sm:w-72 lg:w-80">
           <Image
             src="/theboyzpick-logo.png"
             alt="TheBoyzPick"
@@ -237,8 +237,8 @@ export default async function Home() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <span className="relative flex size-2">
-                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--accent-brand)] opacity-75" />
-                  <span className="relative inline-flex size-2 rounded-full bg-[var(--accent-brand)]" />
+                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--accent)] opacity-75" />
+                  <span className="relative inline-flex size-2 rounded-full bg-[var(--accent)]" />
                 </span>
                 <Radio className="size-4 text-[var(--accent)]" />
                 <CardTitle>Live Feed</CardTitle>

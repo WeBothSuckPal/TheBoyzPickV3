@@ -1196,7 +1196,6 @@ export async function getPublicLeaderboards(): Promise<{
 const sanitizedMessages: Record<string, string> = {
   good: "A member's balance was updated.",
   neutral: "A member placed a new pick.",
-  bad: "A pick was graded.",
 };
 
 export async function getPublicFeed(): Promise<ActivityItem[]> {
