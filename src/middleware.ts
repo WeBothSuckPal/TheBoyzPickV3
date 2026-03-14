@@ -9,6 +9,8 @@ const isProtectedRoute = createRouteMatcher([
   "/wallet(.*)",
   "/admin(.*)",
   "/api/admin(.*)",
+  "/leaderboards(.*)",
+  "/faq(.*)",
 ]);
 const isCronRoute = createRouteMatcher(["/api/cron(.*)"]);
 

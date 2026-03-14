@@ -20,7 +20,7 @@ const monoFont = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: `${appName} | Private Sports Picks Club`,
   description:
-    "Private sports picks club with daily spreads, moneylines, over/unders, leaderboards, bankroll tracking, and commissioner controls.",
+    "Private sports picks club with daily competition, leaderboards, and commissioner controls. Members only.",
 };
 
 export default function RootLayout({

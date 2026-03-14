@@ -34,7 +34,7 @@ export default async function SignUpPage() {
         <ArrowLeft className="size-4" />
         Back to home
       </Link>
-      <SignUp />
+      <SignUp path="/sign-up" />
     </main>
   );
 }

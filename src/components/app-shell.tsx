@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Shield, Target, Trophy, Wallet } from "lucide-react";
+import { HelpCircle, Shield, Target, Trophy, Wallet } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { appName } from "@/lib/constants";
@@ -14,6 +14,7 @@ const navItems = [
   { href: "/slips", label: "Build Slip", icon: Shield },
   { href: "/wallet", label: "Wallet", icon: Wallet },
   { href: "/leaderboards", label: "Leaderboards", icon: Trophy },
+  { href: "/faq", label: "FAQ", icon: HelpCircle },
 ];
 
 export function AppShell({
@@ -74,7 +75,7 @@ export function AppShell({
         </div>
       </header>
 
-      <nav className={cn("grid grid-cols-2 gap-3", viewer.role === "owner_admin" ? "md:grid-cols-5" : "md:grid-cols-4")}>
+      <nav className={cn("grid grid-cols-2 gap-3", viewer.role === "owner_admin" ? "md:grid-cols-6" : "md:grid-cols-5")}>
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = pathname.startsWith(item.href);

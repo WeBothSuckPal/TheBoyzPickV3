@@ -1049,11 +1049,11 @@ export async function getActivityFeedLive() {
     .limit(18);
 
   const publicMessages: Record<string, string> = {
-    approved_top_up: "Commissioner approved a bankroll reload.",
-    placed_slip: "A fresh slip hit the board.",
-    created_lock_pick: "A new Lock of the Day is in.",
+    approved_top_up: "A member's balance was updated.",
+    placed_slip: "A member placed a new pick.",
+    created_lock_pick: "A new Lock of the Day landed.",
     updated_lock_pick: "A Lock of the Day was updated.",
-    ran_settlement_sweep: "Games were graded and the board refreshed.",
+    ran_settlement_sweep: "Picks were graded and the board refreshed.",
   };
 
   return rows

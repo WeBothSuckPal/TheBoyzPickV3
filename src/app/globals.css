@@ -9,6 +9,7 @@
   --accent: #f3b43b;
   --accent-strong: #f29a1f;
   --accent-foreground: #0a1320;
+  --accent-brand: #CC2936;
 }
 
 @theme inline {

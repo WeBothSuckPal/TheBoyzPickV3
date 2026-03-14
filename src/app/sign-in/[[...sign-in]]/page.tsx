@@ -33,7 +33,7 @@ export default function SignInPage() {
         <ArrowLeft className="size-4" />
         Back to home
       </Link>
-      <SignIn />
+      <SignIn path="/sign-in" />
     </main>
   );
 }

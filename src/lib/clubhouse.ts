@@ -1193,33 +1193,54 @@ export async function getPublicLeaderboards(): Promise<{
   };
 }
 
+const sanitizedMessages: Record<string, string> = {
+  good: "A member's balance was updated.",
+  neutral: "A member placed a new pick.",
+  bad: "A pick was graded.",
+};
+
 export async function getPublicFeed(): Promise<ActivityItem[]> {
   if (isDatabaseConfigured()) {
     return getActivityFeedLive();
   }
 
-  return getStore().activity;
+  return getStore().activity.map((item) => ({
+    ...item,
+    message: sanitizedMessages[item.tone] ?? "Activity in the clubhouse.",
+  }));
 }
 
-export async function getPublicWeekLocks(): Promise<WeekLockFeedEntry[]> {
+/** Public week locks — stripped of team names, spreads, odds, and notes for privacy. */
+export async function getPublicWeekLocks(): Promise<
+  Pick<WeekLockFeedEntry, "id" | "displayName" | "result" | "createdAt">[]
+> {
+  let full: WeekLockFeedEntry[];
+
   if (isDatabaseConfigured()) {
-    return getWeekLockFeedLive();
+    full = await getWeekLockFeedLive();
+  } else {
+    const store = getStore();
+    const weekKey = currentWeekKey();
+    full = store.lockPicks
+      .filter((pick) => pick.weekKey === weekKey)
+      .sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt))
+      .map((pick) => ({
+        id: pick.id,
+        displayName: store.users.find((u) => u.id === pick.userId)?.displayName ?? "Member",
+        selectionTeam: pick.selectionTeam,
+        selectionSide: pick.selectionSide,
+        spread: pick.spread,
+        americanOdds: pick.americanOdds,
+        result: pick.result,
+        note: pick.note,
+        createdAt: pick.createdAt,
+      }));
   }
 
-  const store = getStore();
-  const weekKey = currentWeekKey();
-  return store.lockPicks
-    .filter((pick) => pick.weekKey === weekKey)
-    .sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt))
-    .map((pick) => ({
-      id: pick.id,
-      displayName: store.users.find((u) => u.id === pick.userId)?.displayName ?? "Member",
-      selectionTeam: pick.selectionTeam,
-      selectionSide: pick.selectionSide,
-      spread: pick.spread,
-      americanOdds: pick.americanOdds,
-      result: pick.result,
-      note: pick.note,
-      createdAt: pick.createdAt,
-    }));
+  return full.map(({ id, displayName, result, createdAt }) => ({
+    id,
+    displayName,
+    result,
+    createdAt,
+  }));
 }
