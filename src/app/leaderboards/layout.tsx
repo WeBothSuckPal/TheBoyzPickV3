@@ -36,7 +36,7 @@ export default async function LeaderboardsLayout({
   const snapshot = await getMemberSnapshot(viewer);
 
   return (
-    <AppShell viewer={viewer} balanceCents={snapshot.wallet.balanceCents} mode={snapshot.mode}>
+    <AppShell viewer={viewer} balanceCents={snapshot.wallet.balanceCents} mode={snapshot.mode} maintenanceMode={snapshot.settings.maintenanceMode}>
       {children}
     </AppShell>
   );

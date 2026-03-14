@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { appName } from "@/lib/constants";
 
 export default function MaintenancePage() {
   return (
@@ -7,7 +8,7 @@ export default function MaintenancePage() {
         <CardHeader>
           <CardTitle>Maintenance mode</CardTitle>
           <CardDescription>
-            Clubhouse Lines is temporarily paused while the commissioner performs maintenance.
+            {appName} is temporarily paused while the commissioner performs maintenance.
           </CardDescription>
         </CardHeader>
         <CardContent className="text-sm text-[var(--muted-foreground)]">

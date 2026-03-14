@@ -181,6 +181,7 @@ function mapViewer(row: typeof userProfiles.$inferSelect): ViewerProfile {
     clerkUserId: row.clerkUserId,
     email: row.email,
     displayName: row.displayName,
+    nickname: row.nickname,
     imageUrl: row.imageUrl ?? undefined,
     role: row.role,
     status: row.status,
@@ -992,7 +993,7 @@ async function computeLeaderboards(): Promise<{
 
       return {
         userId: user.id,
-        displayName: user.displayName,
+        displayName: user.nickname ?? user.displayName,
         bankrollCents: walletMap.get(user.id) ?? 0,
         roiPercent,
         wins,
@@ -1026,7 +1027,7 @@ async function computeLeaderboards(): Promise<{
       const returned = weeklySlips.reduce((total, slip) => total + slip.payoutCents, 0);
 
       return {
-        displayName: user.displayName,
+        displayName: user.nickname ?? user.displayName,
         weeklyWins,
         weeklyLosses,
         weeklyRoiPercent:
@@ -1146,6 +1147,24 @@ export async function syncViewerLive(input: {
   return mapViewer(row);
 }
 
+export async function updateProfileLive(
+  userId: string,
+  data: { displayName?: string; nickname?: string | null },
+) {
+  const db = dbOrThrow();
+  const updates: Record<string, unknown> = { updatedAt: now() };
+  if (data.displayName !== undefined) updates.displayName = data.displayName;
+  if (data.nickname !== undefined) updates.nickname = data.nickname;
+
+  const updated = await db
+    .update(userProfiles)
+    .set(updates)
+    .where(eq(userProfiles.id, userId))
+    .returning();
+
+  return mapViewer(updated[0]!);
+}
+
 export async function getWeekLockFeedLive(): Promise<WeekLockFeedEntry[]> {
   const db = dbOrThrow();
   const rows = await db
@@ -1159,6 +1178,7 @@ export async function getWeekLockFeedLive(): Promise<WeekLockFeedEntry[]> {
       note: lockPicks.note,
       createdAt: lockPicks.createdAt,
       displayName: userProfiles.displayName,
+      nickname: userProfiles.nickname,
     })
     .from(lockPicks)
     .innerJoin(userProfiles, eq(lockPicks.userProfileId, userProfiles.id))
@@ -1167,7 +1187,7 @@ export async function getWeekLockFeedLive(): Promise<WeekLockFeedEntry[]> {
 
   return rows.map((row) => ({
     id: row.id,
-    displayName: row.displayName,
+    displayName: row.nickname ?? row.displayName,
     selectionTeam: row.selectionTeam,
     selectionSide: row.selectionSide as WeekLockFeedEntry["selectionSide"],
     spread: numericToNumber(row.spread),

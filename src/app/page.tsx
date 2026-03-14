@@ -93,12 +93,12 @@ export default async function Home() {
       {/* ── Section 1: Hero ── */}
       <section className="animate-[border-glow_4s_ease-in-out_infinite] rounded-[36px] border border-[var(--accent)]/15 bg-[var(--panel-strong)] p-8 text-center shadow-[0_24px_80px_rgba(0,0,0,0.3)] lg:p-16">
         {/* Logo */}
-        <div className="mx-auto mb-6 w-56 sm:w-72 lg:w-80">
+        <div className="mx-auto mb-8 w-[22rem] sm:w-[28rem] lg:w-[34rem]">
           <Image
             src="/theboyzpick-logo.png"
             alt="TheBoyzPick"
-            width={256}
-            height={256}
+            width={544}
+            height={544}
             className="mx-auto h-auto w-full"
             priority
           />

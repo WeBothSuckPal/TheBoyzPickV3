@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { HelpCircle, Shield, Target, Trophy, Wallet } from "lucide-react";
+import { AlertTriangle, HelpCircle, Shield, Target, Trophy, User, Wallet } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { appName } from "@/lib/constants";
@@ -14,6 +14,7 @@ const navItems = [
   { href: "/slips", label: "Build Slip", icon: Shield },
   { href: "/wallet", label: "Wallet", icon: Wallet },
   { href: "/leaderboards", label: "Leaderboards", icon: Trophy },
+  { href: "/profile", label: "Profile", icon: User },
   { href: "/faq", label: "FAQ", icon: HelpCircle },
 ];
 
@@ -22,16 +23,35 @@ export function AppShell({
   viewer,
   balanceCents,
   mode,
+  maintenanceMode,
 }: {
   children: ReactNode;
   viewer: ViewerProfile;
   balanceCents: number;
   mode: "demo" | "live";
+  maintenanceMode: boolean;
 }) {
   const pathname = usePathname();
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+      {maintenanceMode && viewer.role === "owner_admin" ? (
+        <div className="flex items-center justify-center gap-2 rounded-2xl border border-[#e67e22]/40 bg-[#e67e22]/15 px-4 py-3 text-sm font-semibold text-[#e67e22]">
+          <AlertTriangle className="size-4" />
+          Maintenance mode is ON — members are locked out. Toggle it off in the Admin panel.
+        </div>
+      ) : null}
+
+      {viewer.displayName === "Club Member" && !pathname.startsWith("/profile") ? (
+        <Link
+          href="/profile?setup=true"
+          className="flex items-center justify-center gap-2 rounded-2xl border border-[var(--accent)]/40 bg-[var(--accent)]/15 px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent)]/25"
+        >
+          <User className="size-4" />
+          Please complete your profile — the commissioner needs your real name.
+        </Link>
+      ) : null}
+
       <header className="rounded-[32px] border border-white/10 bg-[var(--panel-strong)] p-5 shadow-[0_18px_56px_rgba(0,0,0,0.22)]">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-3">
@@ -59,7 +79,7 @@ export function AppShell({
               <div className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
                 Logged in as
               </div>
-              <div className="mt-1 text-base font-semibold text-white">{viewer.displayName}</div>
+              <div className="mt-1 text-base font-semibold text-white">{viewer.nickname ?? viewer.displayName}</div>
               <div className="text-sm text-[var(--muted-foreground)]">{viewer.role}</div>
             </div>
             <div className="rounded-3xl border border-white/10 bg-black/15 px-4 py-3">
@@ -75,7 +95,7 @@ export function AppShell({
         </div>
       </header>
 
-      <nav className={cn("grid grid-cols-2 gap-3", viewer.role === "owner_admin" ? "md:grid-cols-6" : "md:grid-cols-5")}>
+      <nav className={cn("grid grid-cols-2 gap-3", viewer.role === "owner_admin" ? "md:grid-cols-7" : "md:grid-cols-6")}>
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = pathname.startsWith(item.href);

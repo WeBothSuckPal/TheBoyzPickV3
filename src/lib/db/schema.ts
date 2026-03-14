@@ -49,6 +49,7 @@ export const userProfiles = pgTable(
     clerkUserId: text("clerk_user_id").notNull(),
     email: text("email").notNull(),
     displayName: text("display_name").notNull(),
+    nickname: text("nickname"),
     imageUrl: text("image_url"),
     role: roleEnum("role").notNull().default("member"),
     status: userStatusEnum("status").notNull().default("active"),

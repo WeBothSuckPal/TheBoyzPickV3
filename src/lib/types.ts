@@ -73,10 +73,16 @@ export interface ViewerProfile {
   clerkUserId: string;
   email: string;
   displayName: string;
+  nickname: string | null;
   imageUrl?: string;
   role: Role;
   status: UserStatus;
   joinedAt: string;
+}
+
+/** Returns the public-facing name (nickname if set, otherwise displayName). */
+export function getPublicName(profile: { displayName: string; nickname: string | null }): string {
+  return profile.nickname || profile.displayName;
 }
 
 export interface WalletLedgerEntry {

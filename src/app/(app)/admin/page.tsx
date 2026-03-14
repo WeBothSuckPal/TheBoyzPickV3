@@ -105,7 +105,14 @@ export default async function AdminPage({
               >
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <div className="font-semibold text-white">{member.displayName}</div>
+                    <div className="font-semibold text-white">
+                      {member.displayName}
+                      {member.nickname ? (
+                        <span className="ml-2 text-sm font-normal text-[var(--muted-foreground)]">
+                          aka &ldquo;{member.nickname}&rdquo;
+                        </span>
+                      ) : null}
+                    </div>
                     <div className="text-sm text-[var(--muted-foreground)]">{member.email}</div>
                   </div>
                   <div className="text-sm text-[var(--muted-foreground)]">

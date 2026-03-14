@@ -24,6 +24,7 @@ import {
   setMaintenanceModeLive,
   syncViewerLive,
   updateMemberAccessLive,
+  updateProfileLive,
   getActivityFeedLive,
   getWeekLockFeedLive,
 } from "@/lib/live-clubhouse";
@@ -169,6 +170,7 @@ function seedUsers() {
       clerkUserId: "demo-admin",
       email: "commissioner@example.com",
       displayName: "Commissioner",
+      nickname: null,
       role: "owner_admin",
       status: "active",
       joinedAt: nowIso(),
@@ -179,6 +181,7 @@ function seedUsers() {
       clerkUserId: "demo-rome",
       email: "rome@example.com",
       displayName: "Rome",
+      nickname: null,
       role: "member",
       status: "active",
       joinedAt: nowIso(),
@@ -189,6 +192,7 @@ function seedUsers() {
       clerkUserId: "demo-smoke",
       email: "smoke@example.com",
       displayName: "Smoke",
+      nickname: null,
       role: "member",
       status: "active",
       joinedAt: nowIso(),
@@ -199,6 +203,7 @@ function seedUsers() {
       clerkUserId: "demo-jules",
       email: "jules@example.com",
       displayName: "Jules",
+      nickname: null,
       role: "member",
       status: "active",
       joinedAt: nowIso(),
@@ -473,7 +478,7 @@ function buildLeaderboards(): LeaderboardEntry[] {
 
       return {
         userId: user.id,
-        displayName: user.displayName,
+        displayName: user.nickname ?? user.displayName,
         bankrollCents: getWallet(user.id).balanceCents,
         roiPercent,
         wins,
@@ -509,7 +514,7 @@ function buildRivalryBoard(): RivalryEntry[] {
         staked === 0 ? 0 : Number((((returned - staked) / staked) * 100).toFixed(1));
 
       return {
-        displayName: user.displayName,
+        displayName: user.nickname ?? user.displayName,
         weeklyWins,
         weeklyLosses,
         weeklyRoiPercent,
@@ -550,6 +555,7 @@ export async function syncViewer(input: {
     clerkUserId: input.clerkUserId,
     email: input.email,
     displayName: input.displayName,
+    nickname: null,
     imageUrl: input.imageUrl,
     role: input.role,
     status: "active",
@@ -599,9 +605,11 @@ export async function getMemberSnapshot(viewer: ViewerProfile): Promise<MemberSn
     weekLockFeed: store.lockPicks
       .filter((pick) => pick.weekKey === weekKey)
       .sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt))
-      .map((pick) => ({
+      .map((pick) => {
+        const u = store.users.find((u) => u.id === pick.userId);
+        return {
         id: pick.id,
-        displayName: store.users.find((u) => u.id === pick.userId)?.displayName ?? "Member",
+        displayName: u?.nickname ?? u?.displayName ?? "Member",
         selectionTeam: pick.selectionTeam,
         selectionSide: pick.selectionSide,
         spread: pick.spread,
@@ -609,7 +617,8 @@ export async function getMemberSnapshot(viewer: ViewerProfile): Promise<MemberSn
         result: pick.result,
         note: pick.note,
         createdAt: pick.createdAt,
-      })),
+      };
+      }),
     activity: store.activity,
     settings: store.settings,
     mode: getAppMode(),
@@ -653,6 +662,22 @@ export async function updateMemberAccess(input: {
   }
 
   throw new Error("Member access management requires a database-backed environment.");
+}
+
+export async function updateProfile(
+  userId: string,
+  data: { displayName?: string; nickname?: string | null },
+) {
+  if (isDatabaseConfigured()) {
+    return updateProfileLive(userId, data);
+  }
+
+  const store = getStore();
+  const user = store.users.find((u) => u.id === userId);
+  if (!user) throw new Error("User not found.");
+  if (data.displayName !== undefined) user.displayName = data.displayName;
+  if (data.nickname !== undefined) user.nickname = data.nickname;
+  return user;
 }
 
 export async function setMaintenanceMode(actorUserId: string, enabled: boolean) {
@@ -1225,7 +1250,7 @@ export async function getPublicWeekLocks(): Promise<
       .sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt))
       .map((pick) => ({
         id: pick.id,
-        displayName: store.users.find((u) => u.id === pick.userId)?.displayName ?? "Member",
+        displayName: (() => { const u = store.users.find((u) => u.id === pick.userId); return u?.nickname ?? u?.displayName ?? "Member"; })(),
         selectionTeam: pick.selectionTeam,
         selectionSide: pick.selectionSide,
         spread: pick.spread,

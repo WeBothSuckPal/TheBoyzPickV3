@@ -14,6 +14,7 @@ import {
   saveLockPick,
   setMaintenanceMode,
   updateMemberAccess,
+  updateProfile,
 } from "@/lib/clubhouse";
 import { requireAdmin, requireViewer } from "@/lib/auth";
 import { assertRateLimit, getServerRequestContext } from "@/lib/security";
@@ -262,6 +263,36 @@ export async function updateMemberAccessAction(formData: FormData) {
     status,
   });
 
+  revalidatePath("/admin");
+}
+
+const profileSchema = z.object({
+  displayName: z.string().trim().min(2).max(50),
+  nickname: z.string().trim().min(2).max(20).optional().or(z.literal("")),
+});
+
+export async function updateProfileAction(formData: FormData) {
+  const viewer = await requireViewer();
+  const requestContext = await getServerRequestContext();
+  await assertRateLimit({
+    viewer,
+    requestContext,
+    policies: [{ category: "update_profile:user", limit: 20, windowMs: 10 * 60 * 1000, blockMs: 5 * 60 * 1000 }],
+  });
+
+  const parsed = profileSchema.parse({
+    displayName: formData.get("displayName"),
+    nickname: formData.get("nickname")?.toString(),
+  });
+
+  await updateProfile(viewer.id, {
+    displayName: parsed.displayName,
+    nickname: parsed.nickname || null,
+  });
+
+  revalidatePath("/profile");
+  revalidatePath("/leaderboards");
+  revalidatePath("/today");
   revalidatePath("/admin");
 }
 
