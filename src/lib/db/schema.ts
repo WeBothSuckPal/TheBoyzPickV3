@@ -224,7 +224,10 @@ export const betSlips = pgTable("bet_slips", {
     .notNull()
     .defaultNow(),
   settledAt: timestamp("settled_at", { withTimezone: true }),
-});
+}, (table) => ({
+  userStatusIdx: index("bet_slips_user_status_idx").on(table.userProfileId, table.status),
+  createdAtIdx: index("bet_slips_created_at_idx").on(table.createdAt),
+}));
 
 export const betLegs = pgTable("bet_legs", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -245,7 +248,10 @@ export const betLegs = pgTable("bet_legs", {
     .notNull()
     .defaultNow(),
   result: betLegResultEnum("result").notNull().default("pending"),
-});
+}, (table) => ({
+  slipIdx: index("bet_legs_slip_idx").on(table.betSlipId),
+  gameIdx: index("bet_legs_game_idx").on(table.gameId),
+}));
 
 export const lockPicks = pgTable(
   "lock_picks",
