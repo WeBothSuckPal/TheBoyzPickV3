@@ -5,11 +5,34 @@ import { getMemberSnapshot } from "@/lib/clubhouse";
 import { formatGameTime, formatOdds, formatSpread } from "@/lib/utils";
 import { LockPickForm } from "./lock-pick-form";
 
+function buildAvailableGames(games: Awaited<ReturnType<typeof getMemberSnapshot>>["games"]) {
+  const now = new Date();
+  return games
+    .filter((game) => game.status === "scheduled" && new Date(game.commenceTime) > now)
+    .map((game) => ({
+      id: game.id,
+      league: game.league,
+      matchup: game.matchup,
+      homeTeam: game.homeTeam,
+      awayTeam: game.awayTeam,
+      commenceTime: game.commenceTime,
+      options: game.options.map((option) => ({
+        id: option.id,
+        team: option.team,
+        side: option.side,
+        spread: option.spread,
+        americanOdds: option.americanOdds,
+        market: option.market,
+      })),
+    }));
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function TodayPage() {
   const viewer = await requireViewer();
   const snapshot = await getMemberSnapshot(viewer);
+  const availableGames = buildAvailableGames(snapshot.games);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
@@ -99,12 +122,7 @@ export default async function TodayPage() {
             ) : null}
 
             <LockPickForm
-              options={snapshot.games.flatMap((game) =>
-                game.options.map((option) => ({
-                  value: option.id,
-                  label: `${game.league} | ${option.team} ${formatSpread(option.spread)} (${formatOdds(option.americanOdds)})`,
-                })),
-              )}
+              games={availableGames}
               currentSelectionId={snapshot.lockPick?.selectionId}
               currentNote={snapshot.lockPick?.note}
             />
