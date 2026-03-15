@@ -15,6 +15,9 @@ import {
   getAdminSnapshotLive,
   getMemberSnapshotLive,
   getPublicLeaderboardsLive,
+  getClubStatsLive,
+  getEnhancedLeaderboardsLive,
+  getMemberProfileLive,
   placeSlipLive,
   requestTopUpLive,
   runOddsSyncLive,
@@ -37,10 +40,14 @@ import type {
   AuditItem,
   BetLegView,
   BetSlipView,
+  ClubStats,
+  EnhancedLeaderboardEntry,
   GameCard,
   GameOption,
+  HeatBadge,
   LeaderboardEntry,
   LockPickView,
+  MemberProfile,
   MemberSnapshot,
   OpsAutopilotMode,
   OpsFinding,
@@ -1217,6 +1224,55 @@ export async function getPublicLeaderboards(): Promise<{
     leaderboards: buildLeaderboards(),
     rivalryBoard: buildRivalryBoard(),
   };
+}
+
+export async function getEnhancedLeaderboards(): Promise<{
+  leaderboards: EnhancedLeaderboardEntry[];
+  rivalryBoard: RivalryEntry[];
+}> {
+  if (isDatabaseConfigured()) {
+    return getEnhancedLeaderboardsLive();
+  }
+
+  // Demo mode: wrap base leaderboards with default enhanced fields
+  const { leaderboards, rivalryBoard } = await getPublicLeaderboards();
+  return {
+    leaderboards: leaderboards.map((entry) => ({
+      ...entry,
+      bestParlayPayoutCents: 0,
+      bestParlayLegCount: 0,
+      recentWinRate: 50,
+      heatBadge: "neutral" as HeatBadge,
+    })),
+    rivalryBoard,
+  };
+}
+
+export async function getClubStats(): Promise<ClubStats> {
+  if (isDatabaseConfigured()) {
+    return getClubStatsLive();
+  }
+
+  // Demo mode: return empty stats
+  return {
+    totalWageredCents: 0,
+    totalReturnedCents: 0,
+    biggestSingleWinCents: 0,
+    biggestWinnerDisplayName: "N/A",
+    totalSlips: 0,
+    totalParlays: 0,
+    parlaysWon: 0,
+    parlayHitRatePercent: 0,
+    teamPopularity: [],
+    leagueWinRates: [],
+  };
+}
+
+export async function getMemberProfile(userId: string): Promise<MemberProfile | null> {
+  if (isDatabaseConfigured()) {
+    return getMemberProfileLive(userId);
+  }
+  return null; // Demo mode: no profile pages
 }
 
 const sanitizedMessages: Record<string, string> = {

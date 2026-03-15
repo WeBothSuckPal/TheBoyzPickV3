@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   runAiOpsAutopilotAction,
   runOddsSyncAction,
@@ -54,6 +54,7 @@ function ConfirmActionButton({
   hiddenFields?: Record<string, string>;
 }) {
   const [open, setOpen] = useState(false);
+  const submitRef = useRef<HTMLButtonElement>(null);
 
   return (
     <>
@@ -73,20 +74,19 @@ function ConfirmActionButton({
         confirmLabel={confirmLabel}
         variant={confirmVariant}
         onConfirm={() => {
-          const form = document.getElementById(`form-${label.replace(/\s+/g, "-").toLowerCase()}`) as HTMLFormElement;
-          form?.requestSubmit();
+          submitRef.current?.click();
         }}
       />
       <ActionForm action={action}>
         {(pending) => (
-          <span id={`form-${label.replace(/\s+/g, "-").toLowerCase()}`} className="hidden">
+          <div className="hidden">
             {hiddenFields && Object.entries(hiddenFields).map(([name, value]) => (
               <input key={name} type="hidden" name={name} value={value} />
             ))}
-            <button type="submit" disabled={pending}>
+            <button ref={submitRef} type="submit" disabled={pending}>
               {pending ? pendingLabel : label}
             </button>
-          </span>
+          </div>
         )}
       </ActionForm>
     </>

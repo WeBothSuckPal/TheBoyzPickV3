@@ -1042,6 +1042,211 @@ async function computeLeaderboards(): Promise<{
   return { leaderboards, rivalryBoard };
 }
 
+export async function getMemberProfileLive(userId: string): Promise<import("@/lib/types").MemberProfile | null> {
+  const db = dbOrThrow();
+  const [user] = await db.select().from(userProfiles).where(eq(userProfiles.id, userId)).limit(1);
+  if (!user) return null;
+
+  const [wallet, slips, legs, picks] = await Promise.all([
+    db.select().from(walletAccounts).where(eq(walletAccounts.userProfileId, userId)),
+    db.select().from(betSlips).where(eq(betSlips.userProfileId, userId)),
+    db.select().from(betLegs).where(
+      inArray(betLegs.betSlipId, db.select({ id: betSlips.id }).from(betSlips).where(eq(betSlips.userProfileId, userId)))
+    ),
+    db.select().from(lockPicks).where(eq(lockPicks.userProfileId, userId)),
+  ]);
+
+  const graded = slips.filter((s) => s.status !== "open");
+  const wins = graded.filter((s) => s.status === "won").length;
+  const losses = graded.filter((s) => s.status === "lost").length;
+  const pushes = graded.filter((s) => s.status === "push" || s.status === "void").length;
+  const staked = slips.reduce((sum, s) => sum + s.stakeCents, 0);
+  const returned = slips.reduce((sum, s) => sum + s.payoutCents, 0);
+  const roiPercent = staked === 0 ? 0 : Number((((returned - staked) / staked) * 100).toFixed(1));
+
+  const streak = [...graded]
+    .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
+    .reduce((count, slip) => (count >= 0 && slip.status === "won" ? count + 1 : -1), 0);
+
+  // Best parlay
+  const wonParlays = slips.filter((s) => s.slipType === "parlay" && s.status === "won");
+  let bestParlayPayoutCents = 0;
+  let bestParlayLegCount = 0;
+  for (const parlay of wonParlays) {
+    if (parlay.payoutCents > bestParlayPayoutCents) {
+      bestParlayPayoutCents = parlay.payoutCents;
+      bestParlayLegCount = legs.filter((l) => l.betSlipId === parlay.id).length;
+    }
+  }
+
+  const lockPickHistory = [...picks]
+    .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
+    .slice(0, 50)
+    .map((pick) => ({
+      selectionTeam: pick.selectionTeam,
+      spread: Number(pick.spread),
+      americanOdds: pick.americanOdds,
+      result: pick.result as import("@/lib/types").BetLegResult,
+      note: pick.note ?? undefined,
+      weekKey: pick.weekKey,
+    }));
+
+  return {
+    userId: user.id,
+    displayName: user.nickname ?? user.displayName,
+    joinedAt: toIso(user.createdAt) ?? new Date().toISOString(),
+    record: { wins, losses, pushes },
+    bankrollCents: wallet[0]?.balanceCents ?? 0,
+    roiPercent,
+    streak: Math.max(streak, 0),
+    lockPoints: picks.filter((p) => p.result === "win").length,
+    lockPickHistory,
+    bestParlayPayoutCents,
+    bestParlayLegCount,
+    totalSlips: slips.length,
+    totalParlays: slips.filter((s) => s.slipType === "parlay").length,
+  };
+}
+
+export async function getClubStatsLive(): Promise<import("@/lib/types").ClubStats> {
+  const db = dbOrThrow();
+  const [allSlips, allLegs, allUsers] = await Promise.all([
+    db.select().from(betSlips),
+    db.select({
+      id: betLegs.id,
+      betSlipId: betLegs.betSlipId,
+      gameId: betLegs.gameId,
+      selectionTeam: betLegs.selectionTeam,
+      result: betLegs.result,
+    }).from(betLegs),
+    db.select({ id: userProfiles.id, displayName: userProfiles.displayName, nickname: userProfiles.nickname }).from(userProfiles),
+  ]);
+
+  // Fetch games for league info
+  const allGames = await db.select({ id: games.id, leagueSlug: games.leagueSlug }).from(games);
+  const gameLeagueMap = new Map(allGames.map((g) => [g.id, g.leagueSlug]));
+
+  const totalWageredCents = allSlips.reduce((sum, s) => sum + s.stakeCents, 0);
+  const totalReturnedCents = allSlips.reduce((sum, s) => sum + s.payoutCents, 0);
+
+  // Biggest single win
+  let biggestSingleWinCents = 0;
+  let biggestWinnerId = "";
+  for (const slip of allSlips) {
+    if (slip.status === "won" && slip.payoutCents > biggestSingleWinCents) {
+      biggestSingleWinCents = slip.payoutCents;
+      biggestWinnerId = slip.userProfileId;
+    }
+  }
+  const winner = allUsers.find((u) => u.id === biggestWinnerId);
+  const biggestWinnerDisplayName = winner?.nickname ?? winner?.displayName ?? "Unknown";
+
+  // Parlay stats
+  const totalParlays = allSlips.filter((s) => s.slipType === "parlay").length;
+  const parlaysWon = allSlips.filter((s) => s.slipType === "parlay" && s.status === "won").length;
+  const parlayHitRatePercent = totalParlays === 0 ? 0 : Math.round((parlaysWon / totalParlays) * 100);
+
+  // Team popularity
+  const teamCounts = new Map<string, number>();
+  for (const leg of allLegs) {
+    const team = leg.selectionTeam;
+    teamCounts.set(team, (teamCounts.get(team) ?? 0) + 1);
+  }
+  const teamPopularity = [...teamCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([team, count]) => ({ team, count }));
+
+  // League win rates
+  const leagueStats = new Map<string, { wins: number; total: number }>();
+  for (const leg of allLegs) {
+    if (leg.result === "pending") continue;
+    const league = gameLeagueMap.get(leg.gameId) ?? "Unknown";
+    const stats = leagueStats.get(league) ?? { wins: 0, total: 0 };
+    stats.total++;
+    if (leg.result === "win") stats.wins++;
+    leagueStats.set(league, stats);
+  }
+  const leagueWinRates = [...leagueStats.entries()]
+    .map(([league, stats]) => ({
+      league,
+      wins: stats.wins,
+      total: stats.total,
+      percent: stats.total === 0 ? 0 : Math.round((stats.wins / stats.total) * 100),
+    }))
+    .sort((a, b) => b.total - a.total);
+
+  return {
+    totalWageredCents,
+    totalReturnedCents,
+    biggestSingleWinCents,
+    biggestWinnerDisplayName,
+    totalSlips: allSlips.length,
+    totalParlays,
+    parlaysWon,
+    parlayHitRatePercent,
+    teamPopularity,
+    leagueWinRates,
+  };
+}
+
+export async function getEnhancedLeaderboardsLive(): Promise<{
+  leaderboards: import("@/lib/types").EnhancedLeaderboardEntry[];
+  rivalryBoard: import("@/lib/types").RivalryEntry[];
+}> {
+  const db = dbOrThrow();
+  const { leaderboards, rivalryBoard } = await computeLeaderboards();
+
+  // Fetch all slips + legs for best parlay & recent win rate
+  const [allSlips, allLegs] = await Promise.all([
+    db.select().from(betSlips),
+    db.select().from(betLegs),
+  ]);
+
+  const legsBySlip = new Map<string, typeof allLegs>();
+  for (const leg of allLegs) {
+    const existing = legsBySlip.get(leg.betSlipId) ?? [];
+    existing.push(leg);
+    legsBySlip.set(leg.betSlipId, existing);
+  }
+
+  const enhanced = leaderboards.map((entry) => {
+    const userSlips = allSlips.filter((s) => s.userProfileId === entry.userId);
+
+    // Best parlay
+    const wonParlays = userSlips.filter((s) => s.slipType === "parlay" && s.status === "won");
+    let bestParlayPayoutCents = 0;
+    let bestParlayLegCount = 0;
+    for (const parlay of wonParlays) {
+      if (parlay.payoutCents > bestParlayPayoutCents) {
+        bestParlayPayoutCents = parlay.payoutCents;
+        bestParlayLegCount = legsBySlip.get(parlay.id)?.length ?? 0;
+      }
+    }
+
+    // Recent win rate (last 7 settled slips)
+    const graded = userSlips
+      .filter((s) => s.status !== "open")
+      .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
+      .slice(0, 7);
+    const recentWins = graded.filter((s) => s.status === "won").length;
+    const recentWinRate = graded.length === 0 ? 50 : Math.round((recentWins / graded.length) * 100);
+
+    const heatBadge: import("@/lib/types").HeatBadge =
+      graded.length >= 3 && recentWinRate >= 70 ? "hot" : graded.length >= 3 && recentWinRate <= 30 ? "cold" : "neutral";
+
+    return {
+      ...entry,
+      bestParlayPayoutCents,
+      bestParlayLegCount,
+      recentWinRate,
+      heatBadge,
+    };
+  });
+
+  return { leaderboards: enhanced, rivalryBoard };
+}
+
 export async function getActivityFeedLive() {
   const rows = await dbOrThrow()
     .select()

@@ -208,6 +208,15 @@ export interface LeaderboardEntry {
   lockPoints: number;
 }
 
+export type HeatBadge = "hot" | "cold" | "neutral";
+
+export interface EnhancedLeaderboardEntry extends LeaderboardEntry {
+  bestParlayPayoutCents: number;
+  bestParlayLegCount: number;
+  recentWinRate: number;
+  heatBadge: HeatBadge;
+}
+
 export interface RivalryEntry {
   displayName: string;
   weeklyWins: number;
@@ -267,6 +276,42 @@ export interface AdminSnapshot {
   audit: AuditItem[];
   opsHealthReport?: OpsHealthReport;
   anomalyAlerts: AdminAnomalyAlert[];
+}
+
+export interface ClubStats {
+  totalWageredCents: number;
+  totalReturnedCents: number;
+  biggestSingleWinCents: number;
+  biggestWinnerDisplayName: string;
+  totalSlips: number;
+  totalParlays: number;
+  parlaysWon: number;
+  parlayHitRatePercent: number;
+  teamPopularity: { team: string; count: number }[];
+  leagueWinRates: { league: string; wins: number; total: number; percent: number }[];
+}
+
+export interface MemberProfile {
+  userId: string;
+  displayName: string;
+  joinedAt: string;
+  record: { wins: number; losses: number; pushes: number };
+  bankrollCents: number;
+  roiPercent: number;
+  streak: number;
+  lockPoints: number;
+  lockPickHistory: {
+    selectionTeam: string;
+    spread: number;
+    americanOdds: number;
+    result: BetLegResult;
+    note?: string;
+    weekKey: string;
+  }[];
+  bestParlayPayoutCents: number;
+  bestParlayLegCount: number;
+  totalSlips: number;
+  totalParlays: number;
 }
 
 export interface SelectionReference {

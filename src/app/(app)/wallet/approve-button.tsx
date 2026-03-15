@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { approveTopUpAction } from "@/app/actions";
 import { ActionForm } from "@/components/ui/action-form";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ export function ApproveButton({
   amountCents: number;
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const submitRef = useRef<HTMLButtonElement>(null);
 
   return (
     <>
@@ -28,17 +29,15 @@ export function ApproveButton({
         description={`This will credit ${formatCurrency(amountCents)} to the member's wallet. This action cannot be undone.`}
         confirmLabel="Approve"
         onConfirm={() => {
-          // Submit the hidden form
-          const form = document.getElementById(`approve-form-${requestId}`) as HTMLFormElement;
-          form?.requestSubmit();
+          submitRef.current?.click();
         }}
       />
       <ActionForm action={approveTopUpAction}>
         {(pending) => (
-          <span id={`approve-form-${requestId}`} className="hidden">
+          <div className="hidden">
             <input type="hidden" name="requestId" value={requestId} />
-            <button type="submit" disabled={pending} />
-          </span>
+            <button ref={submitRef} type="submit" disabled={pending} />
+          </div>
         )}
       </ActionForm>
     </>
