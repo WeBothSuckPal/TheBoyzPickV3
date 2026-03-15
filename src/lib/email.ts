@@ -133,6 +133,213 @@ function buildEmailHtml(record: SettledSlipRecord): string {
 </html>`;
 }
 
+// --- Daily Game Digest ---
+
+export interface DigestGame {
+  league: string;
+  matchup: string;
+  commenceTime: string;
+  spreads: { team: string; spread: number; americanOdds: number }[];
+}
+
+function buildDigestEmailHtml(displayName: string, games: DigestGame[]): string {
+  const byLeague = new Map<string, DigestGame[]>();
+  for (const game of games) {
+    const list = byLeague.get(game.league) ?? [];
+    list.push(game);
+    byLeague.set(game.league, list);
+  }
+
+  let leagueSections = "";
+  for (const [league, leagueGames] of byLeague) {
+    const gameRows = leagueGames
+      .map((game) => {
+        const spreadCells = game.spreads
+          .map(
+            (s) =>
+              `<td style="padding:6px 12px;font-size:13px;color:#e5e7eb;">${s.team}</td>
+               <td style="padding:6px 12px;font-size:13px;color:#9ca3af;font-family:monospace;">${formatSpread(s.spread)} | ${formatOdds(s.americanOdds)}</td>`,
+          )
+          .join("</tr><tr>");
+        return `<tr>
+          <td colspan="2" style="padding:10px 12px 4px;font-size:14px;font-weight:600;color:#fff;">${game.matchup}</td>
+        </tr>
+        <tr>${spreadCells}</tr>`;
+      })
+      .join("");
+
+    leagueSections += `
+      <div style="margin-top:16px;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.18em;color:#CC2936;font-weight:600;padding:0 12px;">${league}</div>
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:6px;background:rgba(255,255,255,0.04);border-radius:12px;border:1px solid rgba(255,255,255,0.07);">
+          <tbody>${gameRows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="560" cellpadding="0" cellspacing="0" style="background:#111;border-radius:16px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;">
+          <tr>
+            <td style="padding:28px 32px 20px;border-bottom:1px solid rgba(255,255,255,0.06);">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.18em;color:#6b7280;margin-bottom:6px;">Clubhouse Lines</div>
+              <div style="font-size:22px;font-weight:700;color:#fff;">Today&rsquo;s card is live</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 32px;">
+              <div style="font-size:14px;color:#9ca3af;">Hey ${displayName},</div>
+              <div style="margin-top:8px;font-size:14px;color:#d1d5db;"><strong style="color:#fff;">${games.length} game${games.length !== 1 ? "s" : ""}</strong> on the board today. Check the spreads and lock in your picks.</div>
+              ${leagueSections}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 32px;border-top:1px solid rgba(255,255,255,0.06);">
+              <div style="font-size:12px;color:#4b5563;">You're receiving this because you're a member of Clubhouse Lines.</div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+export async function sendDailyGameDigest(
+  members: { email: string; displayName: string }[],
+  games: DigestGame[],
+): Promise<number> {
+  const apiKey = getResendApiKey();
+  if (!apiKey || members.length === 0 || games.length === 0) {
+    return 0;
+  }
+
+  const resend = new Resend(apiKey);
+  const from = getEmailFrom();
+  const subject = `Today's card is live — ${games.length} game${games.length !== 1 ? "s" : ""} on the board`;
+  let sent = 0;
+
+  for (const member of members) {
+    try {
+      await resend.emails.send({
+        from,
+        to: member.email,
+        subject,
+        html: buildDigestEmailHtml(member.displayName, games),
+      });
+      sent++;
+    } catch (err) {
+      console.error("[email] Failed to send daily digest to", member.email, err);
+    }
+  }
+
+  return sent;
+}
+
+// --- Odds Shift Alert ---
+
+export interface OddsShift {
+  matchup: string;
+  team: string;
+  oldSpread: number;
+  newSpread: number;
+  oldOdds: number;
+  newOdds: number;
+}
+
+function buildOddsShiftEmailHtml(displayName: string, shifts: OddsShift[]): string {
+  const shiftRows = shifts
+    .map(
+      (s) => `
+      <tr>
+        <td style="padding:8px 12px;font-size:13px;color:#e5e7eb;">${s.team}</td>
+        <td style="padding:8px 12px;font-size:13px;color:#9ca3af;font-family:monospace;">${formatSpread(s.oldSpread)} → ${formatSpread(s.newSpread)}</td>
+        <td style="padding:8px 12px;font-size:13px;color:#9ca3af;font-family:monospace;">${formatOdds(s.oldOdds)} → ${formatOdds(s.newOdds)}</td>
+      </tr>`,
+    )
+    .join("");
+
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="560" cellpadding="0" cellspacing="0" style="background:#111;border-radius:16px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;">
+          <tr>
+            <td style="padding:28px 32px 20px;border-bottom:1px solid rgba(255,255,255,0.06);">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.18em;color:#6b7280;margin-bottom:6px;">Clubhouse Lines</div>
+              <div style="font-size:22px;font-weight:700;color:#fff;">Line movement alert</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 32px;">
+              <div style="font-size:14px;color:#9ca3af;">Hey ${displayName},</div>
+              <div style="margin-top:8px;font-size:14px;color:#d1d5db;"><strong style="color:#eab308;">${shifts.length}</strong> of your open picks had significant line movement.</div>
+
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:20px;background:rgba(255,255,255,0.04);border-radius:12px;border:1px solid rgba(255,255,255,0.07);">
+                <thead>
+                  <tr style="border-bottom:1px solid rgba(255,255,255,0.06);">
+                    <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.12em;color:#6b7280;font-weight:500;">Selection</th>
+                    <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.12em;color:#6b7280;font-weight:500;">Spread</th>
+                    <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.12em;color:#6b7280;font-weight:500;">Odds</th>
+                  </tr>
+                </thead>
+                <tbody>${shiftRows}</tbody>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 32px;border-top:1px solid rgba(255,255,255,0.06);">
+              <div style="font-size:12px;color:#4b5563;">You're receiving this because you have open bets on Clubhouse Lines.</div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+export async function sendOddsShiftAlerts(
+  affectedUsers: { email: string; displayName: string; shifts: OddsShift[] }[],
+): Promise<number> {
+  const apiKey = getResendApiKey();
+  if (!apiKey || affectedUsers.length === 0) {
+    return 0;
+  }
+
+  const resend = new Resend(apiKey);
+  const from = getEmailFrom();
+  let sent = 0;
+
+  for (const user of affectedUsers) {
+    if (user.shifts.length === 0) continue;
+    try {
+      const subject = `Line movement alert — ${user.shifts.length} of your picks shifted`;
+      await resend.emails.send({
+        from,
+        to: user.email,
+        subject,
+        html: buildOddsShiftEmailHtml(user.displayName, user.shifts),
+      });
+      sent++;
+    } catch (err) {
+      console.error("[email] Failed to send odds shift alert to", user.email, err);
+    }
+  }
+
+  return sent;
+}
+
 export async function sendSettlementEmails(records: SettledSlipRecord[]): Promise<void> {
   const apiKey = getResendApiKey();
   if (!apiKey || records.length === 0) {

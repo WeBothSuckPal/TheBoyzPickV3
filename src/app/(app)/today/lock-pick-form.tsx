@@ -115,6 +115,8 @@ export function LockPickForm({
                             key={option.id}
                             type="button"
                             onClick={() => toggleOption(option.id)}
+                            aria-pressed={isSelected}
+                            aria-label={`Select ${getPickLabel(option)} at ${formatOdds(option.americanOdds)}`}
                             className={`relative rounded-2xl border px-3.5 py-2.5 text-left transition-all duration-200 ${
                               isSelected
                                 ? "border-[var(--accent)]/60 bg-[var(--accent)]/15 shadow-[0_0_20px_rgba(204,41,54,0.15)]"

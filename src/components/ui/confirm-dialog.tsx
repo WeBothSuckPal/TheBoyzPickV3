@@ -43,7 +43,7 @@ export function ConfirmDialog({
     <dialog
       ref={dialogRef}
       onClose={() => onOpenChange(false)}
-      className="fixed inset-0 z-[9998] m-auto max-w-md rounded-[28px] border border-white/10 bg-[var(--panel-strong)] p-0 text-white shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
+      className="fixed inset-0 z-[9998] m-auto max-w-md rounded-[28px] border border-white/10 bg-[var(--panel-strong)] p-0 text-white shadow-2xl"
     >
       <div className="space-y-4 p-6">
         <h2 className="text-lg font-semibold">{title}</h2>

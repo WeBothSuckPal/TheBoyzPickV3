@@ -30,18 +30,6 @@ interface SlipBuilderGame {
   options: GameOption[];
 }
 
-const LEG_NAMES = [
-  "selectionOne",
-  "selectionTwo",
-  "selectionThree",
-  "selectionFour",
-  "selectionFive",
-  "selectionSix",
-  "selectionSeven",
-  "selectionEight",
-  "selectionNine",
-  "selectionTen",
-] as const;
 
 function getPickLabel(option: GameOption): string {
   if (option.market === "h2h") return `${option.team} ML`;
@@ -155,11 +143,7 @@ export function SlipBuilder({
             <IdempotencyField />
 
             {/* Hidden inputs for form submission */}
-            {Array.from(selectedIds).map((id, index) =>
-              index < LEG_NAMES.length ? (
-                <input key={LEG_NAMES[index]} type="hidden" name={LEG_NAMES[index]} value={id} />
-              ) : null,
-            )}
+            <input type="hidden" name="selectionIds" value={JSON.stringify(Array.from(selectedIds))} />
 
             {/* Game board */}
             {games.length === 0 ? (
@@ -199,6 +183,8 @@ export function SlipBuilder({
                               key={option.id}
                               type="button"
                               onClick={() => toggleOption(option.id, game.id)}
+                              aria-pressed={isSelected}
+                              aria-label={`Select ${getPickLabel(option)} at ${formatOdds(option.americanOdds)}`}
                               className={`relative rounded-2xl border px-4 py-3 text-left transition-all duration-200 ${
                                 isSelected
                                   ? "border-[var(--accent)]/60 bg-[var(--accent)]/15 shadow-[0_0_20px_rgba(204,41,54,0.15)]"

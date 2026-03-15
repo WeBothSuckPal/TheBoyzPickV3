@@ -1,5 +1,6 @@
 import {
   boolean,
+  index,
   integer,
   jsonb,
   numeric,
@@ -382,6 +383,52 @@ export const rateLimitBuckets = pgTable(
     categorySubjectIdx: uniqueIndex("rate_limit_buckets_category_subject_idx").on(
       table.category,
       table.subjectKey,
+    ),
+  }),
+);
+
+export const reactions = pgTable(
+  "reactions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userProfileId: uuid("user_profile_id")
+      .notNull()
+      .references(() => userProfiles.id),
+    targetType: text("target_type").notNull(),
+    targetId: uuid("target_id").notNull(),
+    emoji: text("emoji").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    userTargetEmojiIdx: uniqueIndex("reactions_user_target_emoji_idx").on(
+      table.userProfileId,
+      table.targetType,
+      table.targetId,
+      table.emoji,
+    ),
+  }),
+);
+
+export const comments = pgTable(
+  "comments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userProfileId: uuid("user_profile_id")
+      .notNull()
+      .references(() => userProfiles.id),
+    targetType: text("target_type").notNull(),
+    targetId: uuid("target_id").notNull(),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    targetIdx: index("comments_target_idx").on(
+      table.targetType,
+      table.targetId,
     ),
   }),
 );

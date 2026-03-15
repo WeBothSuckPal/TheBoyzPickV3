@@ -314,6 +314,23 @@ export interface MemberProfile {
   totalParlays: number;
 }
 
+export type ReactionEmoji = "🔥" | "🤡" | "💰" | "💀" | "🎯";
+export type ReactionTargetType = "slip" | "lock_pick";
+
+export interface ReactionSummary {
+  emoji: ReactionEmoji;
+  count: number;
+  userReacted: boolean;
+}
+
+export interface CommentView {
+  id: string;
+  userProfileId: string;
+  displayName: string;
+  body: string;
+  createdAt: string;
+}
+
 export interface SelectionReference {
   gameId: string;
   option: GameOption;

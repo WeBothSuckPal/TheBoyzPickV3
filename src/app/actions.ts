@@ -4,7 +4,10 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import {
+  addComment,
   approveTopUp,
+  deleteComment,
+  getCurrentSettings,
   placeSlip,
   requestTopUp,
   runAiOpsAutopilot,
@@ -12,6 +15,7 @@ import {
   runSettlementSweep,
   saveLockPick,
   setMaintenanceMode,
+  toggleReaction,
   updateMemberAccess,
   updateProfile,
 } from "@/lib/clubhouse";
@@ -26,8 +30,8 @@ const topUpSchema = z.object({
 });
 
 const slipSchema = z.object({
-  stake: z.coerce.number().int().min(5).max(200),
-  selectionIds: z.array(z.string()).min(1).max(10),
+  stake: z.coerce.number().int().positive(),
+  selectionIds: z.array(z.string()).min(1).max(4),
 });
 
 export async function submitTopUpRequestAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
@@ -70,24 +74,19 @@ export async function placeSlipAction(_prev: ActionResult | null, formData: Form
       ],
     });
 
-    const selectionIds = [
-      "selectionOne",
-      "selectionTwo",
-      "selectionThree",
-      "selectionFour",
-      "selectionFive",
-      "selectionSix",
-      "selectionSeven",
-      "selectionEight",
-      "selectionNine",
-      "selectionTen",
-    ].map((name) => formData.get(name)?.toString())
-      .filter((value): value is string => Boolean(value));
+    const selectionIds = JSON.parse(formData.get("selectionIds")?.toString() ?? "[]") as string[];
 
     const parsed = slipSchema.parse({
       stake: formData.get("stake"),
       selectionIds,
     });
+
+    const settings = await getCurrentSettings();
+    const minDollars = settings.minStakeCents / 100;
+    const maxDollars = settings.maxStakeCents / 100;
+    if (parsed.stake < minDollars || parsed.stake > maxDollars) {
+      return { success: false, message: `Stake must be between $${minDollars} and $${maxDollars}.` };
+    }
 
     const idempotencyKey = formData.get("idempotencyKey")?.toString();
 
@@ -322,5 +321,96 @@ export async function setMaintenanceModeAction(_prev: ActionResult | null, formD
     return { success: true, message: enabled ? "Maintenance mode enabled." : "Maintenance mode disabled." };
   } catch (error) {
     return { success: false, message: error instanceof Error ? error.message : "Failed to toggle maintenance mode." };
+  }
+}
+
+// ── Social actions ────────────────────────────────────────────────
+
+const VALID_EMOJIS = ["🔥", "🤡", "💰", "💀", "🎯"];
+const VALID_TARGET_TYPES = ["slip", "lock_pick"];
+
+export async function toggleReactionAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  try {
+    const viewer = await requireViewer();
+    const requestContext = await getServerRequestContext();
+    await assertRateLimit({
+      viewer,
+      requestContext,
+      policies: [
+        { category: "reaction:user", limit: 60, windowMs: 60 * 1000, blockMs: 60 * 1000 },
+        { category: "reaction:ip", limit: 120, windowMs: 60 * 1000, blockMs: 60 * 1000 },
+      ],
+    });
+
+    const targetType = formData.get("targetType")?.toString() ?? "";
+    const targetId = formData.get("targetId")?.toString() ?? "";
+    const emoji = formData.get("emoji")?.toString() ?? "";
+
+    if (!VALID_TARGET_TYPES.includes(targetType)) return { success: false, message: "Invalid target type." };
+    if (!targetId) return { success: false, message: "Missing target." };
+    if (!VALID_EMOJIS.includes(emoji)) return { success: false, message: "Invalid emoji." };
+
+    const result = await toggleReaction(viewer.id, targetType, targetId, emoji);
+    revalidatePath("/slips");
+    revalidatePath("/today");
+    return { success: true, message: result === "added" ? "Reaction added." : "Reaction removed." };
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : "Failed to toggle reaction." };
+  }
+}
+
+export async function addCommentAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  try {
+    const viewer = await requireViewer();
+    const requestContext = await getServerRequestContext();
+    await assertRateLimit({
+      viewer,
+      requestContext,
+      policies: [
+        { category: "comment:user", limit: 15, windowMs: 5 * 60 * 1000, blockMs: 5 * 60 * 1000 },
+        { category: "comment:ip", limit: 30, windowMs: 5 * 60 * 1000, blockMs: 5 * 60 * 1000 },
+      ],
+    });
+
+    const targetType = formData.get("targetType")?.toString() ?? "";
+    const targetId = formData.get("targetId")?.toString() ?? "";
+    const body = formData.get("body")?.toString()?.trim() ?? "";
+
+    if (!VALID_TARGET_TYPES.includes(targetType)) return { success: false, message: "Invalid target type." };
+    if (!targetId) return { success: false, message: "Missing target." };
+    if (!body || body.length > 280) return { success: false, message: "Comment must be 1-280 characters." };
+
+    await addComment(viewer.id, targetType, targetId, body);
+    revalidatePath("/slips");
+    revalidatePath("/today");
+    return { success: true, message: "Comment posted." };
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : "Failed to post comment." };
+  }
+}
+
+export async function deleteCommentAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  try {
+    const viewer = await requireViewer();
+    const requestContext = await getServerRequestContext();
+    await assertRateLimit({
+      viewer,
+      requestContext,
+      policies: [
+        { category: "comment_delete:user", limit: 30, windowMs: 5 * 60 * 1000, blockMs: 5 * 60 * 1000 },
+      ],
+    });
+
+    const commentId = formData.get("commentId")?.toString() ?? "";
+    if (!commentId) return { success: false, message: "Missing comment ID." };
+
+    const deleted = await deleteComment(viewer.id, commentId);
+    if (!deleted) return { success: false, message: "Comment not found or not yours." };
+
+    revalidatePath("/slips");
+    revalidatePath("/today");
+    return { success: true, message: "Comment deleted." };
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : "Failed to delete comment." };
   }
 }

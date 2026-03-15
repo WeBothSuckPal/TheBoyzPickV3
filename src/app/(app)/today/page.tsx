@@ -1,7 +1,8 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ReactionBar } from "@/components/ui/reaction-bar";
 import { requireViewer } from "@/lib/auth";
-import { getMemberSnapshot } from "@/lib/clubhouse";
+import { getMemberSnapshot, getReactionSummaries } from "@/lib/clubhouse";
 import { formatGameTime, formatOdds, formatSpread } from "@/lib/utils";
 import { LockPickForm } from "./lock-pick-form";
 
@@ -33,6 +34,10 @@ export default async function TodayPage() {
   const viewer = await requireViewer();
   const snapshot = await getMemberSnapshot(viewer);
   const availableGames = buildAvailableGames(snapshot.games);
+
+  // Fetch social data for lock picks
+  const lockPickIds = snapshot.weekLockFeed.map((lp) => lp.id);
+  const lockReactions = await getReactionSummaries(viewer.id, "lock_pick", lockPickIds);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
@@ -173,6 +178,13 @@ export default async function TodayPage() {
                     >
                       {entry.result}
                     </Badge>
+                  </div>
+                  <div className="mt-3 border-t border-white/6 pt-2">
+                    <ReactionBar
+                      targetType="lock_pick"
+                      targetId={entry.id}
+                      reactions={lockReactions.get(entry.id) ?? []}
+                    />
                   </div>
                 </div>
               ))

@@ -23,10 +23,12 @@ import {
   appSettings,
   betLegs,
   betSlips,
+  comments,
   games,
   leagues,
   lockPicks,
   oddsQuotes,
+  reactions,
   opsHealthReports,
   topUpRequests,
   userProfiles,
@@ -1040,6 +1042,155 @@ async function computeLeaderboards(): Promise<{
     );
 
   return { leaderboards, rivalryBoard };
+}
+
+// ── Social features ────────────────────────────────────────────────
+
+export async function toggleReactionLive(
+  userId: string,
+  targetType: string,
+  targetId: string,
+  emoji: string,
+): Promise<"added" | "removed"> {
+  const db = dbOrThrow();
+  // Check if reaction already exists
+  const [existing] = await db
+    .select()
+    .from(reactions)
+    .where(
+      and(
+        eq(reactions.userProfileId, userId),
+        eq(reactions.targetType, targetType),
+        eq(reactions.targetId, targetId),
+        eq(reactions.emoji, emoji),
+      ),
+    )
+    .limit(1);
+
+  if (existing) {
+    await db.delete(reactions).where(eq(reactions.id, existing.id));
+    return "removed";
+  }
+
+  await db.insert(reactions).values({
+    userProfileId: userId,
+    targetType,
+    targetId,
+    emoji,
+  });
+  return "added";
+}
+
+export async function addCommentLive(
+  userId: string,
+  targetType: string,
+  targetId: string,
+  body: string,
+): Promise<void> {
+  const db = dbOrThrow();
+  await db.insert(comments).values({
+    userProfileId: userId,
+    targetType,
+    targetId,
+    body: body.slice(0, 280),
+  });
+}
+
+export async function deleteCommentLive(
+  userId: string,
+  commentId: string,
+): Promise<boolean> {
+  const db = dbOrThrow();
+  const [comment] = await db
+    .select()
+    .from(comments)
+    .where(eq(comments.id, commentId))
+    .limit(1);
+  if (!comment || comment.userProfileId !== userId) return false;
+  await db.delete(comments).where(eq(comments.id, commentId));
+  return true;
+}
+
+export async function getReactionSummariesLive(
+  viewerUserId: string,
+  targetType: string,
+  targetIds: string[],
+): Promise<Map<string, import("@/lib/types").ReactionSummary[]>> {
+  const result = new Map<string, import("@/lib/types").ReactionSummary[]>();
+  if (targetIds.length === 0) return result;
+
+  const db = dbOrThrow();
+  const allReactions = await db
+    .select()
+    .from(reactions)
+    .where(
+      and(eq(reactions.targetType, targetType), inArray(reactions.targetId, targetIds)),
+    );
+
+  // Group by targetId + emoji
+  for (const targetId of targetIds) {
+    const targetReactions = allReactions.filter((r) => r.targetId === targetId);
+    const emojiMap = new Map<string, { count: number; userReacted: boolean }>();
+
+    for (const r of targetReactions) {
+      const entry = emojiMap.get(r.emoji) ?? { count: 0, userReacted: false };
+      entry.count++;
+      if (r.userProfileId === viewerUserId) entry.userReacted = true;
+      emojiMap.set(r.emoji, entry);
+    }
+
+    const summaries: import("@/lib/types").ReactionSummary[] = [];
+    for (const [emoji, data] of emojiMap) {
+      summaries.push({
+        emoji: emoji as import("@/lib/types").ReactionEmoji,
+        count: data.count,
+        userReacted: data.userReacted,
+      });
+    }
+    result.set(targetId, summaries);
+  }
+
+  return result;
+}
+
+export async function getCommentsLive(
+  targetType: string,
+  targetIds: string[],
+): Promise<Map<string, import("@/lib/types").CommentView[]>> {
+  const result = new Map<string, import("@/lib/types").CommentView[]>();
+  if (targetIds.length === 0) return result;
+
+  const db = dbOrThrow();
+  const rows = await db
+    .select({
+      id: comments.id,
+      userProfileId: comments.userProfileId,
+      targetId: comments.targetId,
+      body: comments.body,
+      createdAt: comments.createdAt,
+      displayName: userProfiles.displayName,
+      nickname: userProfiles.nickname,
+    })
+    .from(comments)
+    .innerJoin(userProfiles, eq(comments.userProfileId, userProfiles.id))
+    .where(
+      and(eq(comments.targetType, targetType), inArray(comments.targetId, targetIds)),
+    )
+    .orderBy(asc(comments.createdAt));
+
+  for (const row of rows) {
+    const views = result.get(row.targetId) ?? [];
+    views.push({
+      id: row.id,
+      userProfileId: row.userProfileId,
+      displayName: row.nickname ?? row.displayName,
+      body: row.body,
+      createdAt: toIso(row.createdAt) ?? new Date().toISOString(),
+    });
+    result.set(row.targetId, views);
+  }
+
+  return result;
 }
 
 export async function getMemberProfileLive(userId: string): Promise<import("@/lib/types").MemberProfile | null> {
@@ -2078,6 +2229,7 @@ export async function runOddsSyncLive() {
   let checkedGames = 0;
   let updatedQuotes = 0;
   let postponedGames = 0;
+  const oddsShifts: { gameId: string; matchup: string; team: string; oldSpread: number; newSpread: number; oldOdds: number; newOdds: number }[] = [];
 
   for (const league of settings.enabledLeagues) {
     const events = await fetchLeagueOdds(league, settings.primaryBookmaker);
@@ -2125,6 +2277,19 @@ export async function runOddsSyncLive() {
         gameId = inserted[0]!.id;
       }
 
+      // Snapshot old spread quotes before deleting for shift detection
+      const oldQuotes = await db
+        .select()
+        .from(oddsQuotes)
+        .where(
+          and(
+            eq(oddsQuotes.gameId, gameId),
+            eq(oddsQuotes.bookmakerKey, settings.primaryBookmaker),
+            eq(oddsQuotes.isPrimary, true),
+            eq(oddsQuotes.market, "spreads"),
+          ),
+        );
+
       await db
         .delete(oddsQuotes)
         .where(
@@ -2147,6 +2312,29 @@ export async function runOddsSyncLive() {
           isPrimary: true,
         })),
       );
+
+      // Detect significant line shifts (>= 1.5 points)
+      const matchup = `${event.awayTeam} @ ${event.homeTeam}`;
+      for (const oldQ of oldQuotes) {
+        const newOutcome = event.outcomes.find(
+          (o) => o.side === oldQ.selectionSide && o.market === "spreads",
+        );
+        if (newOutcome) {
+          const oldSpread = numericToNumber(oldQ.point);
+          const newSpread = newOutcome.spread;
+          if (Math.abs(newSpread - oldSpread) >= 1.5) {
+            oddsShifts.push({
+              gameId: gameId!,
+              matchup,
+              team: oldQ.selectionTeam,
+              oldSpread,
+              newSpread,
+              oldOdds: oldQ.americanOdds,
+              newOdds: newOutcome.americanOdds,
+            });
+          }
+        }
+      }
       await persistMarketSnapshots({
         gameId: gameId!,
         leagueSlug: league,
@@ -2190,9 +2378,63 @@ export async function runOddsSyncLive() {
     }
   }
 
+  // Send odds shift alerts to users with open bets on shifted games
+  let shiftAlertsSent = 0;
+  if (oddsShifts.length > 0) {
+    const shiftedGameIds = [...new Set(oddsShifts.map((s) => s.gameId))];
+    const openLegs = await db
+      .select({
+        gameId: betLegs.gameId,
+        selectionTeam: betLegs.selectionTeam,
+        selectionSide: betLegs.selectionSide,
+        userId: betSlips.userProfileId,
+      })
+      .from(betLegs)
+      .innerJoin(betSlips, eq(betLegs.betSlipId, betSlips.id))
+      .where(
+        and(
+          inArray(betLegs.gameId, shiftedGameIds),
+          eq(betSlips.status, "open"),
+        ),
+      );
+
+    if (openLegs.length > 0) {
+      const userIds = [...new Set(openLegs.map((l) => l.userId))];
+      const users = await db
+        .select({ id: userProfiles.id, email: userProfiles.email, displayName: userProfiles.displayName })
+        .from(userProfiles)
+        .where(inArray(userProfiles.id, userIds));
+
+      const userMap = new Map(users.map((u) => [u.id, u]));
+      const affectedUsers: { email: string; displayName: string; shifts: { matchup: string; team: string; oldSpread: number; newSpread: number; oldOdds: number; newOdds: number }[] }[] = [];
+
+      for (const userId of userIds) {
+        const user = userMap.get(userId);
+        if (!user) continue;
+        const userLegs = openLegs.filter((l) => l.userId === userId);
+        const userShifts = userLegs
+          .map((leg) =>
+            oddsShifts.find(
+              (s) => s.gameId === leg.gameId && s.team === leg.selectionTeam,
+            ),
+          )
+          .filter(Boolean) as typeof oddsShifts;
+
+        if (userShifts.length > 0) {
+          affectedUsers.push({ email: user.email, displayName: user.displayName, shifts: userShifts });
+        }
+      }
+
+      if (affectedUsers.length > 0) {
+        const { sendOddsShiftAlerts } = await import("@/lib/email");
+        shiftAlertsSent = await sendOddsShiftAlerts(affectedUsers);
+      }
+    }
+  }
+
   await recordAudit(undefined, "ran_odds_sync", "system", "odds-sync");
   const archivedAuditLogs = await archiveAuditLogsLive();
-  return { success: true, checkedGames, updatedQuotes, postponedGames, archivedAuditLogs };
+  return { success: true, checkedGames, updatedQuotes, postponedGames, shiftAlertsSent, archivedAuditLogs };
 }
 
 export async function runSettlementSweepLive() {
@@ -2426,4 +2668,60 @@ export async function runSettlementSweepLive() {
   await recordAudit(undefined, "ran_settlement_sweep", "system", "settlement");
   const archivedAuditLogs = await archiveAuditLogsLive();
   return { success: true, settledGames, settledSlips, archivedAuditLogs };
+}
+
+export async function getDailyDigestDataLive() {
+  const db = dbOrThrow();
+
+  // Active members with emails
+  const members = await db
+    .select({ email: userProfiles.email, displayName: userProfiles.displayName })
+    .from(userProfiles)
+    .where(eq(userProfiles.status, "active"));
+
+  // Today's scheduled games with primary odds
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  const scheduledGames = await db
+    .select()
+    .from(games)
+    .where(
+      and(
+        eq(games.status, "scheduled"),
+        gte(games.commenceTime, todayStart),
+        lte(games.commenceTime, todayEnd),
+      ),
+    )
+    .orderBy(asc(games.commenceTime));
+
+  const digestGames: { league: string; matchup: string; commenceTime: string; spreads: { team: string; spread: number; americanOdds: number }[] }[] = [];
+
+  for (const game of scheduledGames) {
+    const quotes = await db
+      .select()
+      .from(oddsQuotes)
+      .where(
+        and(
+          eq(oddsQuotes.gameId, game.id),
+          eq(oddsQuotes.isPrimary, true),
+          eq(oddsQuotes.market, "spreads"),
+        ),
+      );
+
+    digestGames.push({
+      league: game.leagueSlug,
+      matchup: `${game.awayTeam} @ ${game.homeTeam}`,
+      commenceTime: game.commenceTime.toISOString(),
+      spreads: quotes.map((q) => ({
+        team: q.selectionTeam,
+        spread: numericToNumber(q.point),
+        americanOdds: q.americanOdds,
+      })),
+    });
+  }
+
+  return { members, games: digestGames };
 }

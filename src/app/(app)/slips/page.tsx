@@ -1,7 +1,9 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CommentSection } from "@/components/ui/comment-section";
+import { ReactionBar } from "@/components/ui/reaction-bar";
 import { requireViewer } from "@/lib/auth";
-import { getMemberSnapshot } from "@/lib/clubhouse";
+import { getComments, getMemberSnapshot, getReactionSummaries } from "@/lib/clubhouse";
 import { formatCompactDate, formatCurrency, formatOdds, formatSpread } from "@/lib/utils";
 import { SlipBuilder } from "./slip-builder";
 
@@ -29,6 +31,13 @@ export default async function SlipsPage() {
         market: option.market,
       })),
     }));
+
+  // Fetch social data for slips
+  const slipIds = snapshot.slips.map((s) => s.id);
+  const [slipReactions, slipComments] = await Promise.all([
+    getReactionSummaries(viewer.id, "slip", slipIds),
+    getComments("slip", slipIds),
+  ]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
@@ -116,6 +125,21 @@ export default async function SlipsPage() {
                     {formatCurrency(slip.payoutCents)}
                   </div>
                 </div>
+              </div>
+
+              {/* Social: Reactions + Comments */}
+              <div className="mt-4 space-y-3 border-t border-white/6 pt-3">
+                <ReactionBar
+                  targetType="slip"
+                  targetId={slip.id}
+                  reactions={slipReactions.get(slip.id) ?? []}
+                />
+                <CommentSection
+                  targetType="slip"
+                  targetId={slip.id}
+                  comments={slipComments.get(slip.id) ?? []}
+                  viewerUserId={viewer.id}
+                />
               </div>
             </div>
           ))}

@@ -30,6 +30,11 @@ import {
   updateProfileLive,
   getActivityFeedLive,
   getWeekLockFeedLive,
+  toggleReactionLive,
+  addCommentLive,
+  deleteCommentLive,
+  getReactionSummariesLive,
+  getCommentsLive,
 } from "@/lib/live-clubhouse";
 import { getWeekKey, isDateOnOrAfterWeekKey } from "@/lib/time";
 import { makeId } from "@/lib/utils";
@@ -1273,6 +1278,40 @@ export async function getMemberProfile(userId: string): Promise<MemberProfile | 
     return getMemberProfileLive(userId);
   }
   return null; // Demo mode: no profile pages
+}
+
+// ── Social features ────────────────────────────────────────────────
+
+export async function toggleReaction(userId: string, targetType: string, targetId: string, emoji: string) {
+  if (isDatabaseConfigured()) return toggleReactionLive(userId, targetType, targetId, emoji);
+  return "added" as const;
+}
+
+export async function addComment(userId: string, targetType: string, targetId: string, body: string) {
+  if (isDatabaseConfigured()) return addCommentLive(userId, targetType, targetId, body);
+}
+
+export async function deleteComment(userId: string, commentId: string) {
+  if (isDatabaseConfigured()) return deleteCommentLive(userId, commentId);
+  return false;
+}
+
+export async function getReactionSummaries(viewerUserId: string, targetType: string, targetIds: string[]) {
+  if (isDatabaseConfigured()) return getReactionSummariesLive(viewerUserId, targetType, targetIds);
+  return new Map<string, import("@/lib/types").ReactionSummary[]>();
+}
+
+export async function getComments(targetType: string, targetIds: string[]) {
+  if (isDatabaseConfigured()) return getCommentsLive(targetType, targetIds);
+  return new Map<string, import("@/lib/types").CommentView[]>();
+}
+
+export async function getDailyDigestData() {
+  if (isDatabaseConfigured()) {
+    const { getDailyDigestDataLive } = await import("@/lib/live-clubhouse");
+    return getDailyDigestDataLive();
+  }
+  return { members: [], games: [] };
 }
 
 const sanitizedMessages: Record<string, string> = {
