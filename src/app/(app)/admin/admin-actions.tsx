@@ -50,7 +50,7 @@ function ConfirmActionButton({
   confirmDescription: string;
   confirmLabel: string;
   confirmVariant?: "default" | "danger";
-  action: (prev: any, formData: FormData) => Promise<any>;
+  action: (prev: { success: boolean; message: string } | null, formData: FormData) => Promise<{ success: boolean; message: string }>;
   hiddenFields?: Record<string, string>;
 }) {
   const [open, setOpen] = useState(false);

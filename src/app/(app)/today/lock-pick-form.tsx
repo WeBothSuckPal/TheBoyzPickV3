@@ -58,12 +58,10 @@ export function LockPickForm({
   // Lookup selected option details
   const selectedOption = useMemo(() => {
     if (!selectedId) return null;
-    for (const game of games) {
-      for (const option of game.options) {
-        if (option.id === selectedId) return { option, game };
-      }
-    }
-    return null;
+    const game = games.find((g) => g.options.some((o) => o.id === selectedId));
+    if (!game) return null;
+    const option = game.options.find((o) => o.id === selectedId);
+    return option ? { option, game } : null;
   }, [selectedId, games]);
 
   function toggleOption(optionId: string) {

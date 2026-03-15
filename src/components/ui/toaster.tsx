@@ -44,7 +44,8 @@ function ToastContainer({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: st
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    const timer = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(timer);
   }, []);
 
   if (!mounted || toasts.length === 0) return null;

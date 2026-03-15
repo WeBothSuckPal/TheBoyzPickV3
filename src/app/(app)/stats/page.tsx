@@ -10,7 +10,6 @@ export default async function StatsPage() {
   const stats = await getClubStats();
 
   const maxTeamCount = stats.teamPopularity[0]?.count ?? 1;
-  const maxLeagueTotal = stats.leagueWinRates[0]?.total ?? 1;
 
   return (
     <div className="space-y-6">

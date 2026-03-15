@@ -424,7 +424,7 @@ async function getWalletView(userId: string): Promise<WalletView> {
   };
 }
 
-async function recordAudit(
+export async function recordAudit(
   actor:
     | {
         userId?: string;

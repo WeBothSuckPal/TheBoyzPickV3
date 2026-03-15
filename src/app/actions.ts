@@ -21,6 +21,7 @@ import {
 } from "@/lib/clubhouse";
 import { requireAdmin, requireViewer } from "@/lib/auth";
 import { assertRateLimit, getServerRequestContext } from "@/lib/security";
+import { recordAudit } from "@/lib/live-clubhouse";
 
 type ActionResult = { success: boolean; message: string };
 
@@ -181,6 +182,7 @@ export async function approveTopUpAction(_prev: ActionResult | null, formData: F
 }
 
 export async function runOddsSyncAction(_prev: ActionResult | null): Promise<ActionResult> {
+  void _prev;
   try {
     const viewer = await requireAdmin();
     const requestContext = await getServerRequestContext();
@@ -191,6 +193,9 @@ export async function runOddsSyncAction(_prev: ActionResult | null): Promise<Act
     });
 
     await runOddsSync();
+    try {
+      await recordAudit({ userId: viewer.id, email: viewer.email }, "run_odds_sync", "system", "sync");
+    } catch {}
     revalidatePath("/today");
     revalidatePath("/admin");
     return { success: true, message: "Odds synced successfully." };
@@ -200,6 +205,7 @@ export async function runOddsSyncAction(_prev: ActionResult | null): Promise<Act
 }
 
 export async function runSettlementSweepAction(_prev: ActionResult | null): Promise<ActionResult> {
+  void _prev;
   try {
     const viewer = await requireAdmin();
     const requestContext = await getServerRequestContext();
@@ -210,6 +216,9 @@ export async function runSettlementSweepAction(_prev: ActionResult | null): Prom
     });
 
     await runSettlementSweep();
+    try {
+      await recordAudit({ userId: viewer.id, email: viewer.email }, "run_settlement_sweep", "system", "sweep");
+    } catch {}
     revalidatePath("/slips");
     revalidatePath("/wallet");
     revalidatePath("/leaderboards");
@@ -279,6 +288,33 @@ export async function updateMemberAccessAction(_prev: ActionResult | null, formD
       role,
       status,
     });
+
+    if (status) {
+      try {
+        const { getDb } = await import("@/lib/db/client");
+        const { userProfiles } = await import("@/lib/db/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = getDb();
+        if (db) {
+          const targetRows = await db
+            .select({ clerkUserId: userProfiles.clerkUserId })
+            .from(userProfiles)
+            .where(eq(userProfiles.id, targetUserId))
+            .limit(1);
+          if (targetRows[0]) {
+            const { clerkClient } = await import("@clerk/nextjs/server");
+            const client = await clerkClient();
+            if (status === "suspended") {
+              await client.users.banUser(targetRows[0].clerkUserId);
+            } else if (status === "active") {
+              await client.users.unbanUser(targetRows[0].clerkUserId);
+            }
+          }
+        }
+      } catch {
+        // Log silently or ignore
+      }
+    }
 
     revalidatePath("/admin");
     return { success: true, message: "Member access updated." };
