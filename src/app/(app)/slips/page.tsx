@@ -11,24 +11,24 @@ export default async function SlipsPage() {
   const viewer = await requireViewer();
   const snapshot = await getMemberSnapshot(viewer);
   const now = new Date();
-  const selectionOptions = snapshot.games
+  const availableGames = snapshot.games
     .filter((game) => game.status === "scheduled" && new Date(game.commenceTime) > now)
-    .flatMap((game) =>
-      game.options.map((option) => {
-        const pickLabel =
-          option.market === "h2h"
-            ? `${option.team} ML`
-            : option.market === "totals"
-              ? `${option.team} ${option.spread}`
-              : `${option.team} ${formatSpread(option.spread)}`;
-        return {
-          value: option.id,
-          label: `${game.league} | ${pickLabel} (${formatOdds(option.americanOdds)})`,
-          americanOdds: option.americanOdds,
-          gameId: game.id,
-        };
-      }),
-    );
+    .map((game) => ({
+      id: game.id,
+      league: game.league,
+      matchup: game.matchup,
+      homeTeam: game.homeTeam,
+      awayTeam: game.awayTeam,
+      commenceTime: game.commenceTime,
+      options: game.options.map((option) => ({
+        id: option.id,
+        team: option.team,
+        side: option.side,
+        spread: option.spread,
+        americanOdds: option.americanOdds,
+        market: option.market,
+      })),
+    }));
 
   return (
     <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
@@ -36,12 +36,12 @@ export default async function SlipsPage() {
         <CardHeader>
           <CardTitle>Build slip</CardTitle>
           <CardDescription>
-            Straight bets or parlays up to ten legs. One side per game.
+            Tap a spread to add it to your slip. One side per game, up to four legs.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <SlipBuilder
-            selectionOptions={selectionOptions}
+            games={availableGames}
             walletBalanceCents={snapshot.wallet.balanceCents}
             minStakeCents={snapshot.settings.minStakeCents}
             maxStakeCents={snapshot.settings.maxStakeCents}
