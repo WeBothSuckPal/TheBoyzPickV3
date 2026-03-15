@@ -985,8 +985,8 @@ async function computeLeaderboards(): Promise<{
       const pushes = graded.filter(
         (slip) => slip.status === "push" || slip.status === "void",
       ).length;
-      const staked = userSlips.reduce((total, slip) => total + slip.stakeCents, 0);
-      const returned = userSlips.reduce((total, slip) => total + slip.payoutCents, 0);
+      const staked = graded.reduce((total, slip) => total + slip.stakeCents, 0);
+      const returned = graded.reduce((total, slip) => total + slip.payoutCents, 0);
       const roiPercent =
         staked === 0 ? 0 : Number((((returned - staked) / staked) * 100).toFixed(1));
       const streak = [...graded]
@@ -1290,7 +1290,7 @@ export async function getClubStatsLive(): Promise<import("@/lib/types").ClubStat
     }
   }
   const winner = allUsers.find((u) => u.id === biggestWinnerId);
-  const biggestWinnerDisplayName = winner?.nickname ?? winner?.displayName ?? "Unknown";
+  const biggestWinnerDisplayName = winner?.nickname ?? winner?.displayName ?? "N/A";
 
   // Parlay stats
   const totalParlays = allSlips.filter((s) => s.slipType === "parlay").length;

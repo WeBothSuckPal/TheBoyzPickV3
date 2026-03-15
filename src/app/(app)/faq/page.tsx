@@ -6,7 +6,7 @@ import {
 const faq = [
   {
     q: "What sports are available?",
-    a: "NFL and NCAAF football. We sync odds regularly from major sportsbooks.",
+    a: "We cover major US leagues including NBA, MLB, NFL, and NCAAF. Odds are synced regularly from major sportsbooks.",
   },
   {
     q: "How much does it cost?",
@@ -14,7 +14,7 @@ const faq = [
   },
   {
     q: "How do parlays work?",
-    a: "Build slips with 1 to 10 picks. All legs must hit for the parlay to pay out. Odds multiply.",
+    a: "Build slips with up to 4 picks. All legs must hit for the parlay to pay out. Odds multiply.",
   },
   {
     q: "Who runs this?",
