@@ -43,13 +43,15 @@ export function SlipBuilder({
   walletBalanceCents,
   minStakeCents,
   maxStakeCents,
+  initialSelectionIds = [],
 }: {
   games: SlipBuilderGame[];
   walletBalanceCents: number;
   minStakeCents: number;
   maxStakeCents: number;
+  initialSelectionIds?: string[];
 }) {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(initialSelectionIds));
   const [stakeDollars, setStakeDollars] = useState("");
   const [reviewOpen, setReviewOpen] = useState(false);
 

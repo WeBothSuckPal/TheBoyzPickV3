@@ -1398,8 +1398,9 @@ export async function getEnhancedLeaderboardsLive(): Promise<{
   return { leaderboards: enhanced, rivalryBoard };
 }
 
-export async function getActivityFeedLive() {
-  const rows = await dbOrThrow()
+export async function getActivityFeedLive(): Promise<import("@/lib/types").ActivityItem[]> {
+  const db = dbOrThrow();
+  const rows = await db
     .select()
     .from(adminAuditLogs)
     .orderBy(desc(adminAuditLogs.createdAt))
@@ -1412,17 +1413,29 @@ export async function getActivityFeedLive() {
     updated_lock_pick: "A Lock of the Day was updated.",
   };
 
+  const slipIds = rows.filter((r) => r.action === "placed_slip").map((r) => r.targetId);
+  const legRows = slipIds.length > 0 ? await db.select().from(betLegs).where(inArray(betLegs.betSlipId, slipIds)) : [];
+
   return rows
     .filter((row) => publicMessages[row.action])
-    .map((row) => ({
-      id: row.id,
-      message: publicMessages[row.action]!,
-      createdAt: toIso(row.createdAt)!,
-      tone:
-        row.action === "approved_top_up"
-          ? ("good" as const)
-          : ("neutral" as const),
-    }));
+    .map((row) => {
+      let tailSelectionIds: string[] | undefined;
+      if (row.action === "placed_slip") {
+        tailSelectionIds = legRows
+          .filter((l) => l.betSlipId === row.targetId)
+          .map((l) => l.selectionId);
+      }
+      return {
+        id: row.id,
+        message: publicMessages[row.action]!,
+        createdAt: toIso(row.createdAt)!,
+        tone:
+          row.action === "approved_top_up"
+            ? ("good" as const)
+            : ("neutral" as const),
+        tailSelectionIds,
+      };
+    });
 }
 
 export async function syncViewerLive(input: {

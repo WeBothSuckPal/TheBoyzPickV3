@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ReactionBar } from "@/components/ui/reaction-bar";
 import { requireViewer } from "@/lib/auth";
@@ -203,9 +204,21 @@ export default async function TodayPage() {
                 key={item.id}
                 className="rounded-3xl border border-white/10 bg-black/18 px-4 py-3"
               >
-                <div className="text-sm text-white">{item.message}</div>
-                <div className="mt-1 text-xs uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
-                  {new Date(item.createdAt).toLocaleString()}
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm text-white">{item.message}</div>
+                    <div className="mt-1 text-xs uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+                      {new Date(item.createdAt).toLocaleString()}
+                    </div>
+                  </div>
+                  {item.tailSelectionIds && item.tailSelectionIds.length > 0 ? (
+                    <Link
+                      href={`/slips?selections=${item.tailSelectionIds.join(",")}`}
+                      className="shrink-0 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/20"
+                    >
+                      Tail slip
+                    </Link>
+                  ) : null}
                 </div>
               </div>
             ))}

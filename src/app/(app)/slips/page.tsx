@@ -9,7 +9,13 @@ import { SlipBuilder } from "./slip-builder";
 
 export const dynamic = "force-dynamic";
 
-export default async function SlipsPage() {
+export default async function SlipsPage(props: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const searchParams = await props.searchParams;
+  const initialSelectionIds = typeof searchParams.selections === "string" 
+    ? searchParams.selections.split(",") 
+    : [];
   const viewer = await requireViewer();
   const snapshot = await getMemberSnapshot(viewer);
   const now = new Date();
@@ -54,6 +60,7 @@ export default async function SlipsPage() {
             walletBalanceCents={snapshot.wallet.balanceCents}
             minStakeCents={snapshot.settings.minStakeCents}
             maxStakeCents={snapshot.settings.maxStakeCents}
+            initialSelectionIds={initialSelectionIds}
           />
         </CardContent>
       </Card>

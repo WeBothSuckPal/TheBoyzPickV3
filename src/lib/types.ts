@@ -229,6 +229,7 @@ export interface ActivityItem {
   message: string;
   createdAt: string;
   tone: "good" | "bad" | "neutral";
+  tailSelectionIds?: string[];
 }
 
 export interface AuditItem {
