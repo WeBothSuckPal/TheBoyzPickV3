@@ -3,6 +3,48 @@ import { Resend } from "resend";
 import { getEmailFrom, getResendApiKey } from "@/lib/env";
 import { formatCurrency, formatOdds, formatSpread } from "@/lib/utils";
 import type { BetLegResult, BetSlipStatus, BetSlipType } from "@/lib/types";
+import { isDatabaseConfigured } from "@/lib/env";
+
+/** Redact email to prevent PII leaking into production logs. */
+function redactEmail(email: string): string {
+  const [local, domain] = email.split("@");
+  if (!local || !domain) return "***@***";
+  return `${local[0]}***@${domain}`;
+}
+
+/** Per-execution dedup — prevents the same recipient getting multiple emails in one cron run. */
+const emailedThisRun = new Set<string>();
+
+function shouldThrottle(email: string): boolean {
+  if (emailedThisRun.has(email)) return true;
+  emailedThisRun.add(email);
+  return false;
+}
+
+/** Best-effort persistence of failed email for later retry. */
+/** Best-effort persistence of failed email for later retry. */
+async function persistEmailFailure(
+  recipientEmail: string,
+  emailType: string,
+  payload: Record<string, unknown>,
+  err: unknown,
+): Promise<void> {
+  if (!isDatabaseConfigured()) return;
+  try {
+    const { getDb } = await import("@/lib/db/client");
+    const { failedEmails } = await import("@/lib/db/schema");
+    const db = getDb();
+    if (!db) return;
+    await db.insert(failedEmails).values({
+      recipientEmail,
+      emailType,
+      payload,
+      errorMessage: err instanceof Error ? err.message : "Unknown error",
+    });
+  } catch {
+    // Don't let logging failure break the email loop
+  }
+}
 
 export interface SettledSlipEmailLeg {
   selectionTeam: string;
@@ -226,6 +268,7 @@ export async function sendDailyGameDigest(
   let sent = 0;
 
   for (const member of members) {
+    if (shouldThrottle(member.email)) continue;
     try {
       await resend.emails.send({
         from,
@@ -235,7 +278,8 @@ export async function sendDailyGameDigest(
       });
       sent++;
     } catch (err) {
-      console.error("[email] Failed to send daily digest to", member.email, err);
+      console.error("[email] Failed to send daily digest to", redactEmail(member.email), err);
+      await persistEmailFailure(member.email, "digest", { displayName: member.displayName, gameCount: games.length }, err);
     }
   }
 
@@ -323,6 +367,7 @@ export async function sendOddsShiftAlerts(
 
   for (const user of affectedUsers) {
     if (user.shifts.length === 0) continue;
+    if (shouldThrottle(user.email)) continue;
     try {
       const subject = `Line movement alert — ${user.shifts.length} of your picks shifted`;
       await resend.emails.send({
@@ -333,7 +378,8 @@ export async function sendOddsShiftAlerts(
       });
       sent++;
     } catch (err) {
-      console.error("[email] Failed to send odds shift alert to", user.email, err);
+      console.error("[email] Failed to send odds shift alert to", redactEmail(user.email), err);
+      await persistEmailFailure(user.email, "odds_shift", { displayName: user.displayName, shiftCount: user.shifts.length }, err);
     }
   }
 
@@ -381,7 +427,8 @@ export async function sendSettlementEmails(records: SettledSlipRecord[]): Promis
         }
       }
     } catch (err) {
-      console.error("[email] Failed to send settlement email to", first.userEmail, err);
+      console.error("[email] Failed to send settlement email to", redactEmail(first.userEmail), err);
+      await persistEmailFailure(first.userEmail, "settlement", { userId: first.userId, slipCount: userRecords.length }, err);
     }
   }
 }

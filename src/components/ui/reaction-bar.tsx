@@ -6,6 +6,14 @@ import type { ReactionEmoji, ReactionSummary } from "@/lib/types";
 
 const ALL_EMOJIS: ReactionEmoji[] = ["🔥", "🤡", "💰", "💀", "🎯"];
 
+const EMOJI_NAMES: Record<ReactionEmoji, string> = {
+  "🔥": "fire",
+  "🤡": "clown",
+  "💰": "money",
+  "💀": "skull",
+  "🎯": "bullseye",
+};
+
 export function ReactionBar({
   targetType,
   targetId,
@@ -59,6 +67,8 @@ export function ReactionBar({
             key={emoji}
             type="button"
             onClick={() => handleReaction(emoji)}
+            aria-label={`React with ${EMOJI_NAMES[emoji]}${count > 0 ? `, ${count} reaction${count !== 1 ? "s" : ""}` : ""}`}
+            aria-pressed={active}
             className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold transition-all duration-150 active:scale-95 ${
               active
                 ? "border border-[var(--accent)]/40 bg-[var(--accent)]/15 text-white shadow-[0_0_12px_rgba(204,41,54,0.12)]"

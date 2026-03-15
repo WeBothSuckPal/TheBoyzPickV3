@@ -43,12 +43,14 @@ export function ConfirmDialog({
     <dialog
       ref={dialogRef}
       onClose={() => onOpenChange(false)}
+      aria-labelledby="dialog-title"
+      aria-describedby={description ? "dialog-description" : undefined}
       className="fixed inset-0 z-[9998] m-auto max-w-md rounded-[28px] border border-white/10 bg-[var(--panel-strong)] p-0 text-white shadow-2xl"
     >
       <div className="space-y-4 p-6">
-        <h2 className="text-lg font-semibold">{title}</h2>
+        <h2 id="dialog-title" className="text-lg font-semibold">{title}</h2>
         {description ? (
-          <p className="text-sm text-[var(--muted-foreground)]">{description}</p>
+          <p id="dialog-description" className="text-sm text-[var(--muted-foreground)]">{description}</p>
         ) : null}
         {children}
         <div className="flex items-center justify-end gap-3 pt-2">

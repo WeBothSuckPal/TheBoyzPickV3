@@ -64,22 +64,37 @@ export function CommentSection({
       {/* Add comment form */}
       <ActionForm action={addCommentAction}>
         {(pending) => (
-          <div className="flex items-center gap-2">
-            <input type="hidden" name="targetType" value={targetType} />
-            <input type="hidden" name="targetId" value={targetId} />
-            <Input
-              name="body"
-              type="text"
-              maxLength={280}
-              placeholder="Drop a comment…"
-              className="h-8 text-xs"
-            />
-            <Button type="submit" size="sm" disabled={pending} className="shrink-0">
-              {pending ? "…" : "Post"}
-            </Button>
-          </div>
+          <CommentInput targetType={targetType} targetId={targetId} pending={pending} />
         )}
       </ActionForm>
+    </div>
+  );
+}
+
+function CommentInput({ targetType, targetId, pending }: { targetType: string; targetId: string; pending: boolean }) {
+  const [bodyLength, setBodyLength] = useState(0);
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-2">
+        <input type="hidden" name="targetType" value={targetType} />
+        <input type="hidden" name="targetId" value={targetId} />
+        <Input
+          name="body"
+          type="text"
+          maxLength={280}
+          placeholder="Drop a comment…"
+          aria-label="Write a comment"
+          className="h-8 text-xs"
+          onChange={(e) => setBodyLength(e.target.value.length)}
+        />
+        <Button type="submit" size="sm" disabled={pending} className="shrink-0">
+          {pending ? "…" : "Post"}
+        </Button>
+      </div>
+      {bodyLength > 0 ? (
+        <span className="text-[10px] text-[var(--muted-foreground)]">{bodyLength}/280</span>
+      ) : null}
     </div>
   );
 }

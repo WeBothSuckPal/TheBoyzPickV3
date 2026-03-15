@@ -21,9 +21,11 @@ export function LeaderboardTabs({
   return (
     <div className="space-y-6">
       {/* Tab toggle */}
-      <div className="flex gap-1 rounded-full border border-white/10 bg-white/4 p-1">
+      <div role="tablist" className="flex gap-1 rounded-full border border-white/10 bg-white/4 p-1">
         <button
           type="button"
+          role="tab"
+          aria-selected={tab === "all-time"}
           onClick={() => setTab("all-time")}
           className={`flex-1 rounded-full px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
             tab === "all-time"
@@ -35,6 +37,8 @@ export function LeaderboardTabs({
         </button>
         <button
           type="button"
+          role="tab"
+          aria-selected={tab === "this-week"}
           onClick={() => setTab("this-week")}
           className={`flex-1 rounded-full px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
             tab === "this-week"

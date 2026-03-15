@@ -24,6 +24,23 @@ import { assertRateLimit, getServerRequestContext } from "@/lib/security";
 
 type ActionResult = { success: boolean; message: string };
 
+/** Whitelist of error messages safe to show to end users. */
+const SAFE_ERROR_MESSAGES = new Set([
+  "Wallet balance is too low.",
+  "Top-up request is no longer pending.",
+  "You already have the maximum number of open slips.",
+  "One or more selections are no longer available.",
+  "Game has already started.",
+  "You have already picked a lock for today.",
+  "Cannot modify your own role.",
+  "Cannot suspend yourself.",
+]);
+
+function safeMessage(error: unknown, fallback: string): string {
+  const msg = error instanceof Error ? error.message : "";
+  return SAFE_ERROR_MESSAGES.has(msg) ? msg : fallback;
+}
+
 const topUpSchema = z.object({
   amount: z.coerce.number().int().min(5).max(500),
   note: z.string().trim().max(120).optional(),
@@ -57,7 +74,7 @@ export async function submitTopUpRequestAction(_prev: ActionResult | null, formD
     revalidatePath("/admin");
     return { success: true, message: "Top-up request submitted." };
   } catch (error) {
-    return { success: false, message: error instanceof Error ? error.message : "Top-up request failed." };
+    return { success: false, message: safeMessage(error, "Top-up request failed.") };
   }
 }
 
@@ -102,7 +119,7 @@ export async function placeSlipAction(_prev: ActionResult | null, formData: Form
     revalidatePath("/leaderboards");
     return { success: true, message: "Slip placed successfully!" };
   } catch (error) {
-    return { success: false, message: error instanceof Error ? error.message : "Slip placement failed." };
+    return { success: false, message: safeMessage(error, "Slip placement failed.") };
   }
 }
 
@@ -133,7 +150,7 @@ export async function saveLockPickAction(_prev: ActionResult | null, formData: F
     revalidatePath("/leaderboards");
     return { success: true, message: "Lock of the Day saved!" };
   } catch (error) {
-    return { success: false, message: error instanceof Error ? error.message : "Failed to save lock pick." };
+    return { success: false, message: safeMessage(error, "Failed to save lock pick.") };
   }
 }
 
@@ -159,7 +176,7 @@ export async function approveTopUpAction(_prev: ActionResult | null, formData: F
     revalidatePath("/leaderboards");
     return { success: true, message: "Top-up approved." };
   } catch (error) {
-    return { success: false, message: error instanceof Error ? error.message : "Failed to approve top-up." };
+    return { success: false, message: safeMessage(error, "Failed to approve top-up.") };
   }
 }
 
@@ -178,7 +195,7 @@ export async function runOddsSyncAction(_prev: ActionResult | null): Promise<Act
     revalidatePath("/admin");
     return { success: true, message: "Odds synced successfully." };
   } catch (error) {
-    return { success: false, message: error instanceof Error ? error.message : "Odds sync failed." };
+    return { success: false, message: safeMessage(error, "Odds sync failed.") };
   }
 }
 
@@ -199,7 +216,7 @@ export async function runSettlementSweepAction(_prev: ActionResult | null): Prom
     revalidatePath("/admin");
     return { success: true, message: "Settlement sweep complete." };
   } catch (error) {
-    return { success: false, message: error instanceof Error ? error.message : "Settlement sweep failed." };
+    return { success: false, message: safeMessage(error, "Settlement sweep failed.") };
   }
 }
 
@@ -224,7 +241,7 @@ export async function runAiOpsAutopilotAction(_prev: ActionResult | null, formDa
     revalidatePath("/today");
     return { success: true, message: `AI autopilot (${mode}) complete.` };
   } catch (error) {
-    return { success: false, message: error instanceof Error ? error.message : "AI autopilot failed." };
+    return { success: false, message: safeMessage(error, "AI autopilot failed.") };
   }
 }
 
@@ -266,7 +283,7 @@ export async function updateMemberAccessAction(_prev: ActionResult | null, formD
     revalidatePath("/admin");
     return { success: true, message: "Member access updated." };
   } catch (error) {
-    return { success: false, message: error instanceof Error ? error.message : "Failed to update member access." };
+    return { success: false, message: safeMessage(error, "Failed to update member access.") };
   }
 }
 
@@ -301,7 +318,7 @@ export async function updateProfileAction(_prev: ActionResult | null, formData: 
     revalidatePath("/admin");
     return { success: true, message: "Profile saved." };
   } catch (error) {
-    return { success: false, message: error instanceof Error ? error.message : "Failed to save profile." };
+    return { success: false, message: safeMessage(error, "Failed to save profile.") };
   }
 }
 
@@ -320,7 +337,7 @@ export async function setMaintenanceModeAction(_prev: ActionResult | null, formD
     revalidatePath("/admin");
     return { success: true, message: enabled ? "Maintenance mode enabled." : "Maintenance mode disabled." };
   } catch (error) {
-    return { success: false, message: error instanceof Error ? error.message : "Failed to toggle maintenance mode." };
+    return { success: false, message: safeMessage(error, "Failed to toggle maintenance mode.") };
   }
 }
 
@@ -355,7 +372,7 @@ export async function toggleReactionAction(_prev: ActionResult | null, formData:
     revalidatePath("/today");
     return { success: true, message: result === "added" ? "Reaction added." : "Reaction removed." };
   } catch (error) {
-    return { success: false, message: error instanceof Error ? error.message : "Failed to toggle reaction." };
+    return { success: false, message: safeMessage(error, "Failed to toggle reaction.") };
   }
 }
 
@@ -385,7 +402,7 @@ export async function addCommentAction(_prev: ActionResult | null, formData: For
     revalidatePath("/today");
     return { success: true, message: "Comment posted." };
   } catch (error) {
-    return { success: false, message: error instanceof Error ? error.message : "Failed to post comment." };
+    return { success: false, message: safeMessage(error, "Failed to post comment.") };
   }
 }
 
@@ -411,6 +428,6 @@ export async function deleteCommentAction(_prev: ActionResult | null, formData: 
     revalidatePath("/today");
     return { success: true, message: "Comment deleted." };
   } catch (error) {
-    return { success: false, message: error instanceof Error ? error.message : "Failed to delete comment." };
+    return { success: false, message: safeMessage(error, "Failed to delete comment.") };
   }
 }

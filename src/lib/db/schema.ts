@@ -387,6 +387,22 @@ export const rateLimitBuckets = pgTable(
   }),
 );
 
+export const failedEmails = pgTable("failed_emails", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  recipientEmail: text("recipient_email").notNull(),
+  emailType: text("email_type").notNull(),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+  errorMessage: text("error_message"),
+  retryCount: integer("retry_count").notNull().default(0),
+  lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const reactions = pgTable(
   "reactions",
   {

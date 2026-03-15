@@ -36,6 +36,13 @@ export function AppShell({
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-lg focus:bg-[var(--accent)] focus:px-4 focus:py-2 focus:text-white"
+      >
+        Skip to content
+      </a>
+
       {maintenanceMode && viewer.role === "owner_admin" ? (
         <div className="flex items-center justify-center gap-2 rounded-2xl border border-[#e67e22]/40 bg-[#e67e22]/15 px-4 py-3 text-sm font-semibold text-[#e67e22]">
           <AlertTriangle className="size-4" />
@@ -105,6 +112,7 @@ export function AppShell({
             <Link
               key={item.href}
               href={item.href}
+              aria-current={active ? "page" : undefined}
               className={cn(
                 "flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition",
                 active
@@ -134,7 +142,7 @@ export function AppShell({
         ) : null}
       </nav>
 
-      <div className="animate-fade-in">{children}</div>
+      <main id="main-content" className="animate-fade-in">{children}</main>
     </div>
   );
 }
