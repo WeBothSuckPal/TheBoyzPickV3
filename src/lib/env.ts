@@ -24,6 +24,10 @@ const envSchema = z.object({
     .default("Send payment to the commissioner and request approval here once sent."),
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
+  NEXT_PUBLIC_PUSHER_APP_KEY: z.string().optional(),
+  NEXT_PUBLIC_PUSHER_CLUSTER: z.string().optional(),
+  PUSHER_APP_ID: z.string().optional(),
+  PUSHER_SECRET: z.string().optional(),
 });
 
 type ParsedEnv = z.infer<typeof envSchema>;

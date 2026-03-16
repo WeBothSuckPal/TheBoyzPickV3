@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
+import { getPusherClient } from "@/lib/pusher";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { EnhancedLeaderboardEntry, RivalryEntry } from "@/lib/types";
@@ -17,6 +19,29 @@ export function LeaderboardTabs({
   rivalryBoard: RivalryEntry[];
 }) {
   const [tab, setTab] = useState<Tab>("all-time");
+  const [boardData, setBoardData] = useState({ leaderboards, rivalryBoard });
+  const [prevLeaderboards, setPrevLeaderboards] = useState(leaderboards);
+
+  if (leaderboards !== prevLeaderboards) {
+    // Note: Render-time state update is completely valid in React for syncing props
+    setPrevLeaderboards(leaderboards);
+    setBoardData({ leaderboards, rivalryBoard });
+  }
+
+  useEffect(() => {
+    const pusher = getPusherClient();
+    if (!pusher) return;
+
+    const channel = pusher.subscribe("clubhouse");
+    channel.bind("leaderboards-update", (data: { leaderboards: EnhancedLeaderboardEntry[]; rivalryBoard: RivalryEntry[] }) => {
+      setBoardData(data);
+    });
+
+    return () => {
+      pusher.unsubscribe("clubhouse");
+      pusher.disconnect();
+    };
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -52,9 +77,9 @@ export function LeaderboardTabs({
 
       {/* Content */}
       {tab === "all-time" ? (
-        <AllTimeBoard leaderboards={leaderboards} />
+        <AllTimeBoard leaderboards={boardData.leaderboards} />
       ) : (
-        <WeeklyBoard rivalryBoard={rivalryBoard} />
+        <WeeklyBoard rivalryBoard={boardData.rivalryBoard} />
       )}
     </div>
   );
@@ -112,7 +137,11 @@ function AllTimeBoard({ leaderboards }: { leaderboards: EnhancedLeaderboardEntry
           </p>
         ) : null}
         {leaderboards.map((entry, index) => (
-          <div
+          <motion.div
+            layout
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
             key={entry.userId}
             className="grid gap-4 rounded-[28px] border border-white/10 bg-black/18 p-4 md:grid-cols-[auto_1fr_auto]"
           >
@@ -138,7 +167,7 @@ function AllTimeBoard({ leaderboards }: { leaderboards: EnhancedLeaderboardEntry
                 </span>
               ) : null}
             </div>
-          </div>
+          </motion.div>
         ))}
       </CardContent>
     </Card>
@@ -161,7 +190,11 @@ function WeeklyBoard({ rivalryBoard }: { rivalryBoard: RivalryEntry[] }) {
           </p>
         ) : null}
         {rivalryBoard.map((entry, index) => (
-          <div
+          <motion.div
+            layout
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
             key={entry.displayName}
             className="grid gap-3 rounded-[28px] border border-white/10 bg-black/18 p-4 md:grid-cols-[auto_1fr_auto_auto]"
           >
@@ -175,7 +208,7 @@ function WeeklyBoard({ rivalryBoard }: { rivalryBoard: RivalryEntry[] }) {
             <div className="text-sm font-semibold text-white">
               {entry.weeklyRoiPercent}% ROI
             </div>
-          </div>
+          </motion.div>
         ))}
       </CardContent>
     </Card>

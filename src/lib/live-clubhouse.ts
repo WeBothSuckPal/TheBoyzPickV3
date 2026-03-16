@@ -38,6 +38,7 @@ import {
 import { sendSettlementEmails, type SettledSlipRecord } from "@/lib/email";
 import { getAdminEmails, getAppMode, getClubTimeZone } from "@/lib/env";
 import { fetchLeagueOdds, fetchLeagueScores } from "@/lib/odds-api";
+import { dispatchPusherEvent } from "@/lib/pusher";
 import { getWeekKey, isDateOnOrAfterWeekKey } from "@/lib/time";
 import type {
   AdminAnomalyAlert,
@@ -2680,6 +2681,12 @@ export async function runSettlementSweepLive() {
 
   await recordAudit(undefined, "ran_settlement_sweep", "system", "settlement");
   const archivedAuditLogs = await archiveAuditLogsLive();
+
+  if (settledSlips > 0 || settledGames > 0) {
+    const leaderboards = await getEnhancedLeaderboardsLive();
+    await dispatchPusherEvent("clubhouse", "leaderboards-update", leaderboards);
+  }
+
   return { success: true, settledGames, settledSlips, archivedAuditLogs };
 }
 
