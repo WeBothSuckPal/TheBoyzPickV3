@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AlertTriangle, BarChart3, HelpCircle, Shield, Target, Ticket, Trophy, User, Wallet } from "lucide-react";
+import { AlertTriangle, Settings, Shield, Target, Ticket, Trophy, User, Wallet } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { appName } from "@/lib/constants";
@@ -15,9 +15,6 @@ const navItems = [
   { href: "/bets", label: "My Bets", icon: Ticket },
   { href: "/wallet", label: "Wallet", icon: Wallet },
   { href: "/leaderboards", label: "Leaderboards", icon: Trophy },
-  { href: "/stats", label: "Stats", icon: BarChart3 },
-  { href: "/profile", label: "Profile", icon: User },
-  { href: "/faq", label: "FAQ", icon: HelpCircle },
 ];
 
 export function AppShell({
@@ -84,27 +81,49 @@ export function AppShell({
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-3xl border border-white/10 bg-black/15 px-4 py-3">
-              <div className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
-                Logged in as
+            <Link
+              href="/profile"
+              className="group rounded-3xl border border-white/10 bg-black/15 px-4 py-3 transition hover:border-white/20 hover:bg-white/5"
+            >
+              <div className="flex items-center justify-between">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+                  Logged in as
+                </div>
+                <User className="size-3 text-[var(--muted-foreground)] transition group-hover:text-white" />
               </div>
               <div className="mt-1 text-base font-semibold text-white">{viewer.nickname ?? viewer.displayName}</div>
               <div className="text-sm text-[var(--muted-foreground)]">{viewer.role}</div>
-            </div>
-            <div className="rounded-3xl border border-white/10 bg-black/15 px-4 py-3">
-              <div className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
-                Wallet
+            </Link>
+            <div className="flex gap-3">
+              <div className="flex-1 rounded-3xl border border-white/10 bg-black/15 px-4 py-3">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+                  Wallet
+                </div>
+                <div className="mt-1 text-base font-semibold text-white">
+                  {formatCurrency(balanceCents)}
+                </div>
+                <div className="text-sm text-[var(--muted-foreground)]">Club credits ready</div>
               </div>
-              <div className="mt-1 text-base font-semibold text-white">
-                {formatCurrency(balanceCents)}
-              </div>
-              <div className="text-sm text-[var(--muted-foreground)]">Club credits ready</div>
+              {viewer.role === "owner_admin" ? (
+                <Link
+                  href="/admin"
+                  className={cn(
+                    "flex items-center justify-center rounded-3xl border px-4 py-3 transition",
+                    pathname.startsWith("/admin")
+                      ? "border-[var(--accent)]/40 bg-[var(--accent)]/15 text-white"
+                      : "border-white/10 bg-black/15 text-[var(--muted-foreground)] hover:border-white/20 hover:text-white",
+                  )}
+                  title="Admin panel"
+                >
+                  <Settings className="size-5" />
+                </Link>
+              ) : null}
             </div>
           </div>
         </div>
       </header>
 
-      <nav className={cn("grid grid-cols-2 gap-3 sm:grid-cols-4", viewer.role === "owner_admin" ? "lg:grid-cols-9" : "lg:grid-cols-8")}>
+      <nav className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = pathname.startsWith(item.href);
@@ -126,24 +145,19 @@ export function AppShell({
             </Link>
           );
         })}
-
-        {viewer.role === "owner_admin" ? (
-          <Link
-            href="/admin"
-            className={cn(
-              "flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition",
-              pathname.startsWith("/admin")
-                ? "border-[var(--accent)]/40 bg-[var(--accent)]/15 text-white"
-                : "border-white/10 bg-white/5 text-[var(--muted-foreground)] hover:bg-white/8 hover:text-white",
-            )}
-          >
-            <Shield className="size-4" />
-            Admin
-          </Link>
-        ) : null}
       </nav>
 
       <main id="main-content" className="animate-fade-in">{children}</main>
+
+      <footer className="flex items-center justify-center gap-6 py-4 text-xs text-[var(--muted-foreground)]">
+        <Link href="/faq" className="transition hover:text-white">
+          FAQ
+        </Link>
+        <span className="opacity-30">·</span>
+        <Link href="/legal" className="transition hover:text-white">
+          Legal
+        </Link>
+      </footer>
     </div>
   );
 }
