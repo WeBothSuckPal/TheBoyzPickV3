@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { ClerkProvider } from "@clerk/nextjs";
 import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 
@@ -24,11 +25,15 @@ export const metadata: Metadata = {
     "Private sports picks club with daily competition, leaderboards, and commissioner controls. Members only.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Read the per-request nonce forwarded by middleware so ClerkProvider and
+  // any manually rendered <Script> elements can carry the correct nonce attribute.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   const body = (
     <body
       className={`${displayFont.variable} ${monoFont.variable} bg-[var(--background)] text-[var(--foreground)] antialiased`}
@@ -39,7 +44,7 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      {isClerkConfigured() ? <ClerkProvider>{body}</ClerkProvider> : body}
+      {isClerkConfigured() ? <ClerkProvider nonce={nonce}>{body}</ClerkProvider> : body}
     </html>
   );
 }

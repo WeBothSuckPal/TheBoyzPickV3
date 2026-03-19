@@ -46,6 +46,15 @@ async function persistEmailFailure(
   }
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export interface SettledSlipEmailLeg {
   selectionTeam: string;
   spread: number;
@@ -124,7 +133,7 @@ function buildEmailHtml(record: SettledSlipRecord): string {
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td>
-                    <div style="font-size:14px;color:#9ca3af;">Hey ${record.userDisplayName},</div>
+                    <div style="font-size:14px;color:#9ca3af;">Hey ${escapeHtml(record.userDisplayName)},</div>
                     <div style="margin-top:8px;font-size:14px;color:#d1d5db;">Your <strong style="color:#fff;">${slipLabel}</strong> has been graded.</div>
                   </td>
                   <td align="right" style="vertical-align:top;">
@@ -235,7 +244,7 @@ function buildDigestEmailHtml(displayName: string, games: DigestGame[]): string 
           </tr>
           <tr>
             <td style="padding:24px 32px;">
-              <div style="font-size:14px;color:#9ca3af;">Hey ${displayName},</div>
+              <div style="font-size:14px;color:#9ca3af;">Hey ${escapeHtml(displayName)},</div>
               <div style="margin-top:8px;font-size:14px;color:#d1d5db;"><strong style="color:#fff;">${games.length} game${games.length !== 1 ? "s" : ""}</strong> on the board today. Check the spreads and lock in your picks.</div>
               ${leagueSections}
             </td>
@@ -325,7 +334,7 @@ function buildOddsShiftEmailHtml(displayName: string, shifts: OddsShift[]): stri
           </tr>
           <tr>
             <td style="padding:24px 32px;">
-              <div style="font-size:14px;color:#9ca3af;">Hey ${displayName},</div>
+              <div style="font-size:14px;color:#9ca3af;">Hey ${escapeHtml(displayName)},</div>
               <div style="margin-top:8px;font-size:14px;color:#d1d5db;"><strong style="color:#eab308;">${shifts.length}</strong> of your open picks had significant line movement.</div>
 
               <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:20px;background:rgba(255,255,255,0.04);border-radius:12px;border:1px solid rgba(255,255,255,0.07);">

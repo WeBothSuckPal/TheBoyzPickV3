@@ -4,8 +4,28 @@ import { CommentSection } from "@/components/ui/comment-section";
 import { ReactionBar } from "@/components/ui/reaction-bar";
 import { requireViewer } from "@/lib/auth";
 import { getComments, getMemberSnapshot, getReactionSummaries } from "@/lib/clubhouse";
+import type { BetSlipView } from "@/lib/types";
 import { formatCompactDate, formatCurrency, formatOdds, formatSpread } from "@/lib/utils";
 import { SlipBuilder } from "./slip-builder";
+
+function groupSlipsByDate(slips: BetSlipView[]) {
+  const now = new Date();
+  const today = now.toDateString();
+  const yesterday = new Date(now.getTime() - 86_400_000).toDateString();
+
+  const todaySlips = slips.filter((s) => new Date(s.createdAt).toDateString() === today);
+  const yesterdaySlips = slips.filter((s) => new Date(s.createdAt).toDateString() === yesterday);
+  const earlierSlips = slips.filter((s) => {
+    const d = new Date(s.createdAt).toDateString();
+    return d !== today && d !== yesterday;
+  });
+
+  const groups: { label: string; slips: BetSlipView[] }[] = [];
+  if (todaySlips.length > 0) groups.push({ label: "Today", slips: todaySlips });
+  if (yesterdaySlips.length > 0) groups.push({ label: "Yesterday", slips: yesterdaySlips });
+  if (earlierSlips.length > 0) groups.push({ label: "Earlier", slips: earlierSlips });
+  return groups;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +65,8 @@ export default async function SlipsPage(props: {
     getComments("slip", slipIds),
   ]);
 
+  const slipGroups = groupSlipsByDate(snapshot.slips);
+
   return (
     <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
       <Card>
@@ -72,84 +94,128 @@ export default async function SlipsPage(props: {
             Open, settled, graded, and refunded slips are all tracked here.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {snapshot.slips.map((slip) => (
-            <div
-              key={slip.id}
-              className="rounded-[28px] border border-white/10 bg-black/18 p-4"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <div className="text-lg font-semibold text-white">
-                    {slip.type === "straight" ? "Straight" : `${slip.legs.length}-leg parlay`}
+        <CardContent className="space-y-6">
+          {slipGroups.length === 0 ? (
+            <div className="text-sm text-[var(--muted-foreground)]">No slips placed yet.</div>
+          ) : (
+            slipGroups.map(({ label, slips }) => (
+              <div key={label} className="space-y-4">
+                {/* Date group header */}
+                <div className="flex items-center gap-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+                    {label}
                   </div>
-                  <div className="text-sm text-[var(--muted-foreground)]">
-                    {formatCompactDate(slip.createdAt)}
-                  </div>
+                  <div className="h-px flex-1 bg-white/8" />
                 </div>
-                <Badge>{slip.status}</Badge>
-              </div>
-              <div className="mt-4 space-y-2">
-                {slip.legs.map((leg) => (
+
+                {slips.map((slip) => (
                   <div
-                    key={leg.id}
-                    className="flex items-center justify-between rounded-2xl border border-white/8 bg-white/6 px-4 py-3 text-sm"
+                    key={slip.id}
+                    className="rounded-[28px] border border-white/10 bg-black/18 p-4"
                   >
-                    <div>
-                      <div className="font-semibold text-white">{leg.selectionTeam}</div>
-                      <div className="font-mono text-[var(--muted-foreground)]">
-                        {formatSpread(leg.spread)} | {formatOdds(leg.americanOdds)}
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="text-lg font-semibold text-white">
+                          {slip.type === "straight" ? "Straight" : `${slip.legs.length}-leg parlay`}
+                        </div>
+                        <div className="text-sm text-[var(--muted-foreground)]">
+                          {formatCompactDate(slip.createdAt)}
+                        </div>
+                      </div>
+                      <Badge
+                        className={
+                          slip.status === "won"
+                            ? "border-green-500/30 bg-green-500/10 text-green-400"
+                            : slip.status === "lost"
+                              ? "border-red-500/30 bg-red-500/10 text-red-400"
+                              : slip.status === "push" || slip.status === "void"
+                                ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-400"
+                                : undefined
+                        }
+                      >
+                        {slip.status}
+                      </Badge>
+                    </div>
+                    <div className="mt-4 space-y-2">
+                      {slip.legs.map((leg) => (
+                        <div
+                          key={leg.id}
+                          className="flex items-center justify-between rounded-2xl border border-white/8 bg-white/6 px-4 py-3 text-sm"
+                        >
+                          <div>
+                            <div className="font-semibold text-white">{leg.selectionTeam}</div>
+                            <div className="font-mono text-[var(--muted-foreground)]">
+                              {formatSpread(leg.spread)} | {formatOdds(leg.americanOdds)}
+                            </div>
+                          </div>
+                          <div
+                            className={`text-xs uppercase tracking-[0.2em] ${
+                              leg.result === "win"
+                                ? "text-green-400"
+                                : leg.result === "loss"
+                                  ? "text-red-400"
+                                  : "text-[var(--muted-foreground)]"
+                            }`}
+                          >
+                            {leg.result}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-2xl border border-white/8 bg-white/6 px-4 py-3">
+                        <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+                          Stake
+                        </div>
+                        <div className="mt-1 font-semibold text-white">
+                          {formatCurrency(slip.stakeCents)}
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border border-white/8 bg-white/6 px-4 py-3">
+                        <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+                          To win
+                        </div>
+                        <div className="mt-1 font-semibold text-white">
+                          {formatCurrency(slip.potentialPayoutCents)}
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border border-white/8 bg-white/6 px-4 py-3">
+                        <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+                          Settled
+                        </div>
+                        <div
+                          className={`mt-1 font-semibold ${
+                            slip.status === "won"
+                              ? "text-emerald-400"
+                              : slip.status === "lost"
+                                ? "text-red-400"
+                                : "text-white"
+                          }`}
+                        >
+                          {formatCurrency(slip.payoutCents)}
+                        </div>
                       </div>
                     </div>
-                    <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
-                      {leg.result}
+
+                    {/* Social: Reactions + Comments */}
+                    <div className="mt-4 space-y-3 border-t border-white/6 pt-3">
+                      <ReactionBar
+                        targetType="slip"
+                        targetId={slip.id}
+                        reactions={slipReactions.get(slip.id) ?? []}
+                      />
+                      <CommentSection
+                        targetType="slip"
+                        targetId={slip.id}
+                        comments={slipComments.get(slip.id) ?? []}
+                        viewerUserId={viewer.id}
+                      />
                     </div>
                   </div>
                 ))}
               </div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-white/8 bg-white/6 px-4 py-3">
-                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
-                    Stake
-                  </div>
-                  <div className="mt-1 font-semibold text-white">
-                    {formatCurrency(slip.stakeCents)}
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-white/8 bg-white/6 px-4 py-3">
-                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
-                    To win
-                  </div>
-                  <div className="mt-1 font-semibold text-white">
-                    {formatCurrency(slip.potentialPayoutCents)}
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-white/8 bg-white/6 px-4 py-3">
-                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
-                    Settled
-                  </div>
-                  <div className="mt-1 font-semibold text-white">
-                    {formatCurrency(slip.payoutCents)}
-                  </div>
-                </div>
-              </div>
-
-              {/* Social: Reactions + Comments */}
-              <div className="mt-4 space-y-3 border-t border-white/6 pt-3">
-                <ReactionBar
-                  targetType="slip"
-                  targetId={slip.id}
-                  reactions={slipReactions.get(slip.id) ?? []}
-                />
-                <CommentSection
-                  targetType="slip"
-                  targetId={slip.id}
-                  comments={slipComments.get(slip.id) ?? []}
-                  viewerUserId={viewer.id}
-                />
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </CardContent>
       </Card>
     </div>

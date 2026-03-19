@@ -93,7 +93,8 @@ export function normalizeOddsEvent(
   bookmaker: string,
   observedAt = new Date(),
 ): OddsSyncEvent | null {
-  const bkMarkets = event.bookmakers?.[0]?.markets ?? [];
+  const bk = event.bookmakers?.find((b) => b.key === bookmaker) ?? event.bookmakers?.[0];
+  const bkMarkets = bk?.markets ?? [];
   const timestamp = observedAt.toISOString();
   const outcomes: OddsSyncEvent["outcomes"] = [];
 

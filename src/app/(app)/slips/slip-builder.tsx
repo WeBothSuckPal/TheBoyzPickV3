@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import { X } from "lucide-react";
 import { placeSlipAction } from "@/app/actions";
 import { ActionForm } from "@/components/ui/action-form";
@@ -8,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { IdempotencyField } from "@/components/ui/idempotency-field";
 import { Input } from "@/components/ui/input";
-import { calculateStraightPayout, calculateParlayPayout } from "@/lib/betting";
+import { americanToDecimal, calculateStraightPayout, calculateParlayPayout } from "@/lib/betting";
 import { formatCurrency, formatOdds, formatSpread, formatGameTime } from "@/lib/utils";
 
 interface GameOption {
@@ -30,12 +31,44 @@ interface SlipBuilderGame {
   options: GameOption[];
 }
 
+const QUICK_STAKES = [5, 10, 25, 50] as const;
 
 function getPickLabel(option: GameOption): string {
   if (option.market === "h2h") return `${option.team} ML`;
   if (option.market === "totals")
     return `${option.team} ${option.spread > 0 ? "O" : "U"} ${Math.abs(option.spread)}`;
   return `${option.team} ${formatSpread(option.spread)}`;
+}
+
+/** Returns the raw decimal multiplier for the combined odds (no stake needed). */
+function computeMultiplier(options: { option: GameOption }[], isParlay: boolean): number {
+  if (options.length === 0) return 0;
+  if (!isParlay) return americanToDecimal(options[0]!.option.americanOdds);
+  return options.reduce((acc, { option }) => acc * americanToDecimal(option.americanOdds), 1);
+}
+
+function PayoutTierBadge({ multiplier }: { multiplier: number }) {
+  if (multiplier <= 0) return null;
+  const label = `${multiplier.toFixed(2)}×`;
+  if (multiplier >= 6) {
+    return (
+      <span className="rounded-full border border-red-500/40 bg-red-500/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-red-400">
+        {label}
+      </span>
+    );
+  }
+  if (multiplier >= 3) {
+    return (
+      <span className="rounded-full border border-amber-500/40 bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-amber-400">
+        {label}
+      </span>
+    );
+  }
+  return (
+    <span className="rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-emerald-400">
+      {label}
+    </span>
+  );
 }
 
 export function SlipBuilder({
@@ -88,6 +121,11 @@ export function SlipBuilder({
   const stakeCents = Math.round((parseFloat(stakeDollars) || 0) * 100);
   const isParlay = selectedOptions.length > 1;
   const slipType = selectedOptions.length === 0 ? null : isParlay ? "parlay" : "straight";
+
+  const multiplier = useMemo(
+    () => computeMultiplier(selectedOptions, isParlay),
+    [selectedOptions, isParlay],
+  );
 
   const potentialPayout = useMemo(() => {
     if (selectedOptions.length === 0 || stakeCents <= 0) return 0;
@@ -219,15 +257,18 @@ export function SlipBuilder({
             {/* Slip summary panel */}
             {selectedOptions.length > 0 ? (
               <div className="rounded-[28px] border border-[var(--accent)]/25 bg-[var(--accent)]/5 p-4">
-                <div className="mb-3 flex items-center justify-between">
+                <div className="mb-3 flex items-center justify-between gap-2">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
                     Your slip ({selectedOptions.length} {selectedOptions.length === 1 ? "leg" : "legs"})
                   </div>
-                  {slipType ? (
-                    <div className="rounded-full border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
-                      {slipType === "parlay" ? `${selectedOptions.length}-leg parlay` : "Straight"}
-                    </div>
-                  ) : null}
+                  <div className="flex items-center gap-2">
+                    <PayoutTierBadge multiplier={multiplier} />
+                    {slipType ? (
+                      <div className="rounded-full border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
+                        {slipType === "parlay" ? `${selectedOptions.length}-leg parlay` : "Straight"}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -274,6 +315,24 @@ export function SlipBuilder({
                   </div>
                 </div>
 
+                {/* Quick-stake chips */}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {QUICK_STAKES.map((amount) => (
+                    <button
+                      key={amount}
+                      type="button"
+                      onClick={() => setStakeDollars(String(amount))}
+                      className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                        stakeDollars === String(amount)
+                          ? "border-[var(--accent)]/40 bg-[var(--accent)]/15 text-white"
+                          : "border-white/10 bg-white/5 text-[var(--muted-foreground)] hover:bg-white/8 hover:text-white"
+                      }`}
+                    >
+                      ${amount}
+                    </button>
+                  ))}
+                </div>
+
                 <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
                   <Input
                     name="stake"
@@ -294,8 +353,19 @@ export function SlipBuilder({
                 </div>
               </div>
             ) : (
-              <div className="rounded-[28px] border border-dashed border-white/10 bg-black/10 p-5 text-center text-sm text-[var(--muted-foreground)]">
-                Tap a spread above to start building your slip
+              /* Empty state — links to Today's board */
+              <div className="rounded-[28px] border border-dashed border-white/10 bg-black/10 p-6 text-center">
+                <div className="text-sm text-[var(--muted-foreground)]">
+                  Tap a spread above to start building your slip
+                </div>
+                {games.length === 0 && (
+                  <Link
+                    href="/today"
+                    className="mt-3 inline-block rounded-full border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-4 py-1.5 text-xs font-semibold text-[var(--accent)] transition hover:bg-[var(--accent)]/20"
+                  >
+                    View Today&apos;s Board →
+                  </Link>
+                )}
               </div>
             )}
 
@@ -303,6 +373,33 @@ export function SlipBuilder({
           </div>
         )}
       </ActionForm>
+
+      {/* Sticky bottom bar — shows when legs are selected */}
+      {selectedOptions.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[var(--panel)] px-4 py-3 shadow-[0_-8px_32px_rgba(0,0,0,0.4)] sm:px-6">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <PayoutTierBadge multiplier={multiplier} />
+              <div className="text-sm font-semibold text-white">
+                {selectedOptions.length} {selectedOptions.length === 1 ? "Leg" : "Leg Parlay"}
+              </div>
+              {stakeCents > 0 && potentialPayout > 0 && (
+                <div className="text-sm text-emerald-400">
+                  → {formatCurrency(potentialPayout)}
+                </div>
+              )}
+            </div>
+            <Button
+              type="button"
+              disabled={!canPlace}
+              onClick={() => setReviewOpen(true)}
+              className="shrink-0"
+            >
+              Review & Place
+            </Button>
+          </div>
+        </div>
+      )}
 
       <ConfirmDialog
         open={reviewOpen}

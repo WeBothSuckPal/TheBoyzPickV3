@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ReactionBar } from "@/components/ui/reaction-bar";
 import { requireViewer } from "@/lib/auth";
 import { getMemberSnapshot, getReactionSummaries } from "@/lib/clubhouse";
-import { formatGameTime, formatOdds, formatSpread } from "@/lib/utils";
+import { formatOdds, formatSpread, relativeTime } from "@/lib/utils";
+import { LeagueFilter } from "./league-filter";
 import { LockPickForm } from "./lock-pick-form";
 
 function buildAvailableGames(games: Awaited<ReturnType<typeof getMemberSnapshot>>["games"]) {
@@ -40,65 +41,37 @@ export default async function TodayPage() {
   const lockPickIds = snapshot.weekLockFeed.map((lp) => lp.id);
   const lockReactions = await getReactionSummaries(viewer.id, "lock_pick", lockPickIds);
 
+  // Pass all games to the client filter (it handles status badges)
+  const filterableGames = snapshot.games.map((game) => ({
+    id: game.id,
+    league: game.league,
+    matchup: game.matchup,
+    homeTeam: game.homeTeam,
+    awayTeam: game.awayTeam,
+    commenceTime: game.commenceTime,
+    status: game.status,
+    options: game.options.map((option) => ({
+      id: option.id,
+      team: option.team,
+      side: option.side,
+      spread: option.spread,
+      americanOdds: option.americanOdds,
+      market: option.market,
+      intelligence: option.intelligence
+        ? {
+            confidenceBand: option.intelligence.confidenceBand,
+            riskTags: option.intelligence.riskTags,
+            blurb: option.intelligence.blurb,
+          }
+        : null,
+    })),
+  }));
+
   return (
     <div className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
-      <Card>
-        <CardHeader>
-          <CardTitle>Today&apos;s board</CardTitle>
-          <CardDescription>
-            Spread-only card from the configured primary bookmaker. Bets lock at event start.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {snapshot.games.map((game) => (
-            <div
-              key={game.id}
-              className="rounded-[28px] border border-white/10 bg-black/18 p-4"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
-                    {game.league}
-                  </div>
-                  <div className="mt-1 text-lg font-semibold text-white">{game.matchup}</div>
-                  <div className="text-sm text-[var(--muted-foreground)]">
-                    {formatGameTime(game.commenceTime)}
-                  </div>
-                </div>
-                <Badge>{game.status}</Badge>
-              </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                {game.options.map((option) => (
-                  <div
-                    key={option.id}
-                    className="rounded-3xl border border-white/10 bg-white/6 px-4 py-3"
-                  >
-                    <div className="text-sm font-semibold text-white">{option.team}</div>
-                    <div className="mt-1 font-mono text-sm text-[var(--muted-foreground)]">
-                      {formatSpread(option.spread)} | {formatOdds(option.americanOdds)}
-                    </div>
-                    {option.intelligence ? (
-                      <div className="mt-3 space-y-2">
-                        <div className="flex flex-wrap gap-2">
-                          <Badge>AI {option.intelligence.confidenceBand}</Badge>
-                          {option.intelligence.riskTags.map((tag) => (
-                            <Badge key={tag}>{tag}</Badge>
-                          ))}
-                        </div>
-                        <div className="text-xs leading-6 text-[var(--muted-foreground)]">
-                          {option.intelligence.blurb}
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-6">
+      {/* ── Left column ─────────────────────────────────────── */}
+      <div className="space-y-6">
+        {/* Lock of the Day — hero position */}
         <Card>
           <CardHeader>
             <CardTitle>Lock of the Day</CardTitle>
@@ -109,10 +82,23 @@ export default async function TodayPage() {
           <CardContent className="space-y-4">
             {snapshot.lockPick ? (
               <div className="rounded-3xl border border-[var(--accent)]/30 bg-[var(--accent)]/10 p-4">
-                <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">
-                  Current lock
+                <div className="flex items-center gap-2">
+                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">
+                    Your lock this week
+                  </div>
+                  <svg
+                    className="size-4 text-[var(--accent)]"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414L8.414 15l-4.121-4.121a1 1 0 011.414-1.414L8.414 12.172l6.879-6.879a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
                 </div>
-                <div className="mt-1 text-lg font-semibold text-white">
+                <div className="mt-1 text-xl font-semibold text-white">
                   {snapshot.lockPick.selectionTeam}
                 </div>
                 <div className="font-mono text-sm text-[var(--muted-foreground)]">
@@ -124,6 +110,9 @@ export default async function TodayPage() {
                     &ldquo;{snapshot.lockPick.note}&rdquo;
                   </div>
                 ) : null}
+                <div className="mt-3 border-t border-[var(--accent)]/20 pt-3 text-xs text-[var(--muted-foreground)]">
+                  Change your lock below if games are still available.
+                </div>
               </div>
             ) : null}
 
@@ -135,6 +124,22 @@ export default async function TodayPage() {
           </CardContent>
         </Card>
 
+        {/* Today's board with league filter */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Today&apos;s board</CardTitle>
+            <CardDescription>
+              Spread-only card from the configured primary bookmaker. Bets lock at event start.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <LeagueFilter games={filterableGames} />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Right column ────────────────────────────────────── */}
+      <div className="space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>This Week&apos;s Locks</CardTitle>
@@ -208,7 +213,7 @@ export default async function TodayPage() {
                   <div>
                     <div className="text-sm text-white">{item.message}</div>
                     <div className="mt-1 text-xs uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
-                      {new Date(item.createdAt).toLocaleString()}
+                      {relativeTime(item.createdAt)}
                     </div>
                   </div>
                   {item.tailSelectionIds && item.tailSelectionIds.length > 0 ? (

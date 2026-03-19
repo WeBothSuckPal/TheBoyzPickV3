@@ -381,6 +381,7 @@ export async function setMaintenanceModeAction(_prev: ActionResult | null, formD
 
 const VALID_EMOJIS = ["🔥", "🤡", "💰", "💀", "🎯"];
 const VALID_TARGET_TYPES = ["slip", "lock_pick"];
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function toggleReactionAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
   try {
@@ -400,7 +401,7 @@ export async function toggleReactionAction(_prev: ActionResult | null, formData:
     const emoji = formData.get("emoji")?.toString() ?? "";
 
     if (!VALID_TARGET_TYPES.includes(targetType)) return { success: false, message: "Invalid target type." };
-    if (!targetId) return { success: false, message: "Missing target." };
+    if (!targetId || !UUID_REGEX.test(targetId)) return { success: false, message: "Invalid target." };
     if (!VALID_EMOJIS.includes(emoji)) return { success: false, message: "Invalid emoji." };
 
     const result = await toggleReaction(viewer.id, targetType, targetId, emoji);
@@ -430,7 +431,7 @@ export async function addCommentAction(_prev: ActionResult | null, formData: For
     const body = formData.get("body")?.toString()?.trim() ?? "";
 
     if (!VALID_TARGET_TYPES.includes(targetType)) return { success: false, message: "Invalid target type." };
-    if (!targetId) return { success: false, message: "Missing target." };
+    if (!targetId || !UUID_REGEX.test(targetId)) return { success: false, message: "Invalid target." };
     if (!body || body.length > 280) return { success: false, message: "Comment must be 1-280 characters." };
 
     await addComment(viewer.id, targetType, targetId, body);

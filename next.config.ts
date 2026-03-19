@@ -1,28 +1,13 @@
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
-const contentSecurityPolicy = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "frame-ancestors 'none'",
-  "form-action 'self'",
-  "object-src 'none'",
-  "script-src 'self' 'unsafe-inline' https://*.clerk.com https://*.clerk.accounts.dev https://clerk.theboyzpick.com https://challenges.cloudflare.com https://vercel.live",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https:",
-  "font-src 'self' data:",
-  "connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://clerk.theboyzpick.com https://challenges.cloudflare.com https://api.the-odds-api.com https://*.vercel-insights.com",
-  "frame-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://clerk.theboyzpick.com https://challenges.cloudflare.com",
-].join("; ");
+// Note: Content-Security-Policy is set dynamically in middleware.ts with a
+// per-request nonce, eliminating the need for 'unsafe-inline' in script-src.
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   async headers() {
     const securityHeaders = [
-      {
-        key: "Content-Security-Policy",
-        value: contentSecurityPolicy,
-      },
       {
         key: "Referrer-Policy",
         value: "strict-origin-when-cross-origin",

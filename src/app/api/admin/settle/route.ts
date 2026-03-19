@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     await assertRateLimit({
       viewer,
       requestContext,
-      policies: [{ category: "admin_settle_api:user", limit: 12, windowMs: 10 * 60 * 1000, blockMs: 10 * 60 * 1000 }],
+      policies: [{ category: "admin_settle:user", limit: 12, windowMs: 10 * 60 * 1000, blockMs: 10 * 60 * 1000 }],
     });
     const result = await runSettlementSweep();
     return NextResponse.json(result);
