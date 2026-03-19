@@ -152,11 +152,15 @@ export function SlipBuilder({
         return next;
       }
 
-      // Remove any other selection from the same game
+      // Remove only same-market selections from this game (prevents both sides
+      // of a spread or both O/U, but allows spread + total SGP combos).
       const game = games.find((g) => g.id === gameId);
-      if (game) {
+      const newOption = game?.options.find((o) => o.id === optionId);
+      if (game && newOption) {
         for (const opt of game.options) {
-          next.delete(opt.id);
+          if (opt.market === newOption.market) {
+            next.delete(opt.id);
+          }
         }
       }
 
@@ -214,40 +218,57 @@ export function SlipBuilder({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2">
-                        {game.options.map((option) => {
-                          const isSelected = selectedIds.has(option.id);
+                      {/* Group options by market: Spread | Moneyline | Total */}
+                      {(["spreads", "h2h", "totals"] as const).map((market) => {
+                        const MARKET_LABELS = { spreads: "Spread", h2h: "Moneyline", totals: "Total" };
+                        const marketOptions = game.options.filter((o) => o.market === market);
+                        if (marketOptions.length === 0) return null;
 
-                          return (
-                            <button
-                              key={option.id}
-                              type="button"
-                              onClick={() => toggleOption(option.id, game.id)}
-                              aria-pressed={isSelected}
-                              aria-label={`Select ${getPickLabel(option)} at ${formatOdds(option.americanOdds)}`}
-                              className={`relative rounded-2xl border px-4 py-3 text-left transition-all duration-200 ${
-                                isSelected
-                                  ? "border-[var(--accent)]/60 bg-[var(--accent)]/15 shadow-[0_0_20px_rgba(204,41,54,0.15)]"
-                                  : "border-white/8 bg-white/4 hover:border-white/20 hover:bg-white/8"
-                              }`}
-                            >
-                              <div className={`text-sm font-semibold ${isSelected ? "text-white" : "text-white/80"}`}>
-                                {getPickLabel(option)}
+                        return (
+                          <div key={market} className="space-y-1.5">
+                            {/* Market label — only shown when game has 2+ markets */}
+                            {game.options.some((o) => o.market !== market) && (
+                              <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+                                {MARKET_LABELS[market]}
                               </div>
-                              <div className={`mt-0.5 font-mono text-xs ${isSelected ? "text-[var(--accent)]" : "text-[var(--muted-foreground)]"}`}>
-                                {formatOdds(option.americanOdds)}
-                              </div>
-                              {isSelected ? (
-                                <div className="absolute right-2.5 top-2.5 flex size-5 items-center justify-center rounded-full bg-[var(--accent)] text-white">
-                                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                                    <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                </div>
-                              ) : null}
-                            </button>
-                          );
-                        })}
-                      </div>
+                            )}
+                            <div className="grid grid-cols-2 gap-2">
+                              {marketOptions.map((option) => {
+                                const isSelected = selectedIds.has(option.id);
+
+                                return (
+                                  <button
+                                    key={option.id}
+                                    type="button"
+                                    onClick={() => toggleOption(option.id, game.id)}
+                                    aria-pressed={isSelected}
+                                    aria-label={`Select ${getPickLabel(option)} at ${formatOdds(option.americanOdds)}`}
+                                    className={`relative rounded-2xl border px-4 py-3 text-left transition-all duration-200 ${
+                                      isSelected
+                                        ? "border-[var(--accent)]/60 bg-[var(--accent)]/15 shadow-[0_0_20px_rgba(204,41,54,0.15)]"
+                                        : "border-white/8 bg-white/4 hover:border-white/20 hover:bg-white/8"
+                                    }`}
+                                  >
+                                    <div className={`text-sm font-semibold ${isSelected ? "text-white" : "text-white/80"}`}>
+                                      {getPickLabel(option)}
+                                    </div>
+                                    <div className={`mt-0.5 font-mono text-xs ${isSelected ? "text-[var(--accent)]" : "text-[var(--muted-foreground)]"}`}>
+                                      {formatOdds(option.americanOdds)}
+                                    </div>
+                                    {isSelected ? (
+                                      <div className="absolute right-2.5 top-2.5 flex size-5 items-center justify-center rounded-full bg-[var(--accent)] text-white">
+                                        <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                                          <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                      </div>
+                                    ) : null}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   ))}
                 </div>

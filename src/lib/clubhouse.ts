@@ -813,9 +813,9 @@ export async function placeSlip(input: {
     return { game, option: reference.option };
   });
 
-  const gameIds = new Set(selections.map((entry) => entry.game.id));
-  if (gameIds.size !== selections.length) {
-    throw new Error("Only one pick per game is allowed on a single slip.");
+  const gameMarketKeys = new Set(selections.map((entry) => `${entry.game.id}:${entry.option.market}`));
+  if (gameMarketKeys.size !== selections.length) {
+    throw new Error("Only one pick per market per game is allowed on a single slip.");
   }
 
   const type = selections.length === 1 ? "straight" : "parlay";

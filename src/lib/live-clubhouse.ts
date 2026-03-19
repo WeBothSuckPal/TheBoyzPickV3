@@ -1803,7 +1803,7 @@ export async function placeSlipLive(input: {
     .from(games)
     .where(inArray(games.id, quoteRows.map((row) => row.gameId)));
   const gameMap = new Map(gameRows.map((row) => [row.id, row]));
-  const seenGameIds = new Set<string>();
+  const seenGameMarketKeys = new Set<string>();
 
   for (const quote of quoteRows) {
     const game = gameMap.get(quote.gameId);
@@ -1815,11 +1815,12 @@ export async function placeSlipLive(input: {
       throw new Error("One of the selected games has already started.");
     }
 
-    if (seenGameIds.has(game.id)) {
-      throw new Error("Only one pick per game is allowed on a single slip.");
+    const gameMarketKey = `${game.id}:${quote.market}`;
+    if (seenGameMarketKeys.has(gameMarketKey)) {
+      throw new Error("Only one pick per market per game is allowed on a single slip.");
     }
 
-    seenGameIds.add(game.id);
+    seenGameMarketKeys.add(gameMarketKey);
   }
 
   const type = quoteRows.length === 1 ? "straight" : "parlay";
