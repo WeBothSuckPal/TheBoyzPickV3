@@ -70,7 +70,7 @@ export default async function Home() {
   ]);
 
   const topLeaderboard = leaderboards.slice(0, 5);
-  const spotlightLock = weekLocks[0] ?? null;
+  const spotlightLock = weekLocks[weekLocks.length - 1] ?? null;
 
   const lockWinRate =
     stats.lockWins + stats.lockLosses > 0
@@ -127,7 +127,7 @@ export default async function Home() {
         <div className="flex items-center gap-2">
           <Lock className="size-4 text-[var(--accent)]" />
           <span className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--accent)]">
-            Lock of the Week
+            Lock of the Day
           </span>
         </div>
 
@@ -177,7 +177,7 @@ export default async function Home() {
           </div>
         ) : (
           <div className="w-full max-w-lg rounded-[28px] border border-white/8 bg-[var(--panel)] p-8 text-center">
-            <p className="text-[var(--muted-foreground)]">No lock posted yet this week.</p>
+            <p className="text-[var(--muted-foreground)]">No lock posted today.</p>
           </div>
         )}
       </section>
