@@ -962,13 +962,17 @@ export async function getPublicLeaderboardsLive(): Promise<{
   return computeLeaderboards();
 }
 
-async function computeLeaderboards(): Promise<{
+type ComputeLeaderboardsResult = {
   leaderboards: LeaderboardEntry[];
   rivalryBoard: RivalryEntry[];
-}> {
+  rawSlips: (typeof betSlips.$inferSelect)[];
+  rawPicks: (typeof lockPicks.$inferSelect)[];
+};
+
+async function computeLeaderboards(): Promise<ComputeLeaderboardsResult> {
   const db = dbOrThrow();
   const [users, wallets, slips, picks] = await Promise.all([
-    db.select().from(userProfiles),
+    db.select().from(userProfiles).where(eq(userProfiles.status, "active")),
     db.select().from(walletAccounts),
     db.select().from(betSlips),
     db.select().from(lockPicks),
@@ -977,9 +981,24 @@ async function computeLeaderboards(): Promise<{
   const walletMap = new Map(wallets.map((row) => [row.userProfileId, row.balanceCents]));
   const weekKey = currentWeekKey();
 
+  // Pre-build Maps to avoid O(n×m) filtering per user
+  const slipsByUser = new Map<string, (typeof slips)>();
+  for (const slip of slips) {
+    const bucket = slipsByUser.get(slip.userProfileId) ?? [];
+    bucket.push(slip);
+    slipsByUser.set(slip.userProfileId, bucket);
+  }
+
+  const picksByUser = new Map<string, (typeof picks)>();
+  for (const pick of picks) {
+    const bucket = picksByUser.get(pick.userProfileId) ?? [];
+    bucket.push(pick);
+    picksByUser.set(pick.userProfileId, bucket);
+  }
+
   const leaderboards = users
     .map((user) => {
-      const userSlips = slips.filter((slip) => slip.userProfileId === user.id);
+      const userSlips = slipsByUser.get(user.id) ?? [];
       const graded = userSlips.filter((slip) => slip.status !== "open");
       const wins = graded.filter((slip) => slip.status === "won").length;
       const losses = graded.filter((slip) => slip.status === "lost").length;
@@ -993,6 +1012,7 @@ async function computeLeaderboards(): Promise<{
       const streak = [...graded]
         .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
         .reduce((count, slip) => (count >= 0 && slip.status === "won" ? count + 1 : -1), 0);
+      const lockPoints = (picksByUser.get(user.id) ?? []).filter((p) => p.result === "win").length;
 
       return {
         userId: user.id,
@@ -1003,8 +1023,7 @@ async function computeLeaderboards(): Promise<{
         losses,
         pushes,
         streak: Math.max(streak, 0),
-        lockPoints: picks.filter((pick) => pick.userProfileId === user.id && pick.result === "win")
-          .length,
+        lockPoints,
       };
     })
     .sort(
@@ -1014,15 +1033,10 @@ async function computeLeaderboards(): Promise<{
 
   const rivalryBoard = users
     .map((user) => {
-      const weeklySlips = slips.filter(
+      const weeklySlips = (slipsByUser.get(user.id) ?? []).filter(
         (slip) =>
-          slip.userProfileId === user.id &&
           slip.status !== "open" &&
-          isDateOnOrAfterWeekKey(
-            new Date(slip.createdAt),
-            weekKey,
-            getClubTimeZone(),
-          ),
+          isDateOnOrAfterWeekKey(new Date(slip.createdAt), weekKey, getClubTimeZone()),
       );
       const weeklyWins = weeklySlips.filter((slip) => slip.status === "won").length;
       const weeklyLosses = weeklySlips.filter((slip) => slip.status === "lost").length;
@@ -1042,7 +1056,7 @@ async function computeLeaderboards(): Promise<{
         right.weeklyWins - left.weeklyWins || right.weeklyRoiPercent - left.weeklyRoiPercent,
     );
 
-  return { leaderboards, rivalryBoard };
+  return { leaderboards, rivalryBoard, rawSlips: slips, rawPicks: picks };
 }
 
 // ── Social features ────────────────────────────────────────────────
@@ -1054,32 +1068,25 @@ export async function toggleReactionLive(
   emoji: string,
 ): Promise<"added" | "removed"> {
   const db = dbOrThrow();
-  // Check if reaction already exists
-  const [existing] = await db
-    .select()
-    .from(reactions)
-    .where(
-      and(
-        eq(reactions.userProfileId, userId),
-        eq(reactions.targetType, targetType),
-        eq(reactions.targetId, targetId),
-        eq(reactions.emoji, emoji),
-      ),
-    )
-    .limit(1);
+  // Optimistic insert — if the unique index fires, the row already exists
+  const inserted = await db
+    .insert(reactions)
+    .values({ userProfileId: userId, targetType, targetId, emoji })
+    .onConflictDoNothing()
+    .returning({ id: reactions.id });
 
-  if (existing) {
-    await db.delete(reactions).where(eq(reactions.id, existing.id));
-    return "removed";
-  }
+  if (inserted.length > 0) return "added";
 
-  await db.insert(reactions).values({
-    userProfileId: userId,
-    targetType,
-    targetId,
-    emoji,
-  });
-  return "added";
+  // Row already existed — delete it
+  await db.delete(reactions).where(
+    and(
+      eq(reactions.userProfileId, userId),
+      eq(reactions.targetType, targetType),
+      eq(reactions.targetId, targetId),
+      eq(reactions.emoji, emoji),
+    ),
+  );
+  return "removed";
 }
 
 export async function addCommentLive(
@@ -1347,13 +1354,10 @@ export async function getEnhancedLeaderboardsLive(): Promise<{
   rivalryBoard: import("@/lib/types").RivalryEntry[];
 }> {
   const db = dbOrThrow();
-  const { leaderboards, rivalryBoard } = await computeLeaderboards();
+  const { leaderboards, rivalryBoard, rawSlips: allSlips } = await computeLeaderboards();
 
-  // Fetch all slips + legs for best parlay & recent win rate
-  const [allSlips, allLegs] = await Promise.all([
-    db.select().from(betSlips),
-    db.select().from(betLegs),
-  ]);
+  // Only fetch legs here — slips are reused from computeLeaderboards
+  const allLegs = await db.select().from(betLegs);
 
   const legsBySlip = new Map<string, typeof allLegs>();
   for (const leg of allLegs) {
@@ -2275,7 +2279,13 @@ export async function runOddsSyncLive() {
   const oddsShifts: { gameId: string; matchup: string; team: string; oldSpread: number; newSpread: number; oldOdds: number; newOdds: number }[] = [];
 
   for (const league of settings.enabledLeagues) {
-    const events = await fetchLeagueOdds(league, settings.primaryBookmaker);
+    let events: Awaited<ReturnType<typeof fetchLeagueOdds>>;
+    try {
+      events = await fetchLeagueOdds(league, settings.primaryBookmaker);
+    } catch (err) {
+      console.error(`[runOddsSyncLive] Failed to fetch odds for ${league}:`, err);
+      continue;
+    }
     const seenExternalIds = new Set(events.map((event) => event.externalId));
 
     for (const event of events) {
@@ -2504,7 +2514,13 @@ export async function runSettlementSweepLive() {
 
     if (activeGameRows.length === 0) continue;
 
-    const scoreRows = await fetchLeagueScores(league);
+    let scoreRows: Awaited<ReturnType<typeof fetchLeagueScores>>;
+    try {
+      scoreRows = await fetchLeagueScores(league);
+    } catch (err) {
+      console.error(`[runSettlementSweepLive] Failed to fetch scores for ${league}:`, err);
+      continue;
+    }
 
     for (const result of scoreRows) {
       const gameRows = await db
@@ -2748,28 +2764,39 @@ export async function getDailyDigestDataLive() {
 
   const digestGames: { league: string; matchup: string; commenceTime: string; spreads: { team: string; spread: number; americanOdds: number }[] }[] = [];
 
-  for (const game of scheduledGames) {
-    const quotes = await db
+  if (scheduledGames.length > 0) {
+    const gameIds = scheduledGames.map((g) => g.id);
+    const allQuotes = await db
       .select()
       .from(oddsQuotes)
       .where(
         and(
-          eq(oddsQuotes.gameId, game.id),
+          inArray(oddsQuotes.gameId, gameIds),
           eq(oddsQuotes.isPrimary, true),
           eq(oddsQuotes.market, "spreads"),
         ),
       );
 
-    digestGames.push({
-      league: game.leagueSlug,
-      matchup: `${game.awayTeam} @ ${game.homeTeam}`,
-      commenceTime: game.commenceTime.toISOString(),
-      spreads: quotes.map((q) => ({
-        team: q.selectionTeam,
-        spread: numericToNumber(q.point),
-        americanOdds: q.americanOdds,
-      })),
-    });
+    const quotesByGame = new Map<string, typeof allQuotes>();
+    for (const q of allQuotes) {
+      const bucket = quotesByGame.get(q.gameId) ?? [];
+      bucket.push(q);
+      quotesByGame.set(q.gameId, bucket);
+    }
+
+    for (const game of scheduledGames) {
+      const quotes = quotesByGame.get(game.id) ?? [];
+      digestGames.push({
+        league: game.leagueSlug,
+        matchup: `${game.awayTeam} @ ${game.homeTeam}`,
+        commenceTime: game.commenceTime.toISOString(),
+        spreads: quotes.map((q) => ({
+          team: q.selectionTeam,
+          spread: numericToNumber(q.point),
+          americanOdds: q.americanOdds,
+        })),
+      });
+    }
   }
 
   return { members, games: digestGames };

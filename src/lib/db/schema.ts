@@ -226,6 +226,7 @@ export const betSlips = pgTable("bet_slips", {
   settledAt: timestamp("settled_at", { withTimezone: true }),
 }, (table) => ({
   userStatusIdx: index("bet_slips_user_status_idx").on(table.userProfileId, table.status),
+  statusIdx: index("bet_slips_status_idx").on(table.status),
   createdAtIdx: index("bet_slips_created_at_idx").on(table.createdAt),
 }));
 
@@ -284,6 +285,7 @@ export const lockPicks = pgTable(
       table.userProfileId,
       table.weekKey,
     ),
+    weekKeyIdx: index("lock_picks_week_key_idx").on(table.weekKey),
   }),
 );
 
