@@ -43,6 +43,13 @@
       "when": 1773615185180,
       "tag": "0005_curved_northstar",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1773967835597,
+      "tag": "0006_talented_saracen",
+      "breakpoints": true
     }
   ]
 }
