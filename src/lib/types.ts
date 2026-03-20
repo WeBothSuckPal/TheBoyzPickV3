@@ -194,6 +194,15 @@ export interface WeekLockFeedEntry {
   result: BetLegResult;
   note?: string;
   createdAt: string;
+  commenceTime?: string;
+}
+
+export interface PublicStats {
+  memberCount: number;
+  topRoiPercent: number;
+  lockWins: number;
+  lockLosses: number;
+  lockPushes: number;
 }
 
 export interface LeaderboardEntry {

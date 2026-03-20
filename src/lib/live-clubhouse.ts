@@ -1549,9 +1549,11 @@ export async function getWeekLockFeedLive(): Promise<WeekLockFeedEntry[]> {
       createdAt: lockPicks.createdAt,
       displayName: userProfiles.displayName,
       nickname: userProfiles.nickname,
+      commenceTime: games.commenceTime,
     })
     .from(lockPicks)
     .innerJoin(userProfiles, eq(lockPicks.userProfileId, userProfiles.id))
+    .leftJoin(games, eq(lockPicks.gameId, games.id))
     .where(eq(lockPicks.weekKey, currentWeekKey()))
     .orderBy(asc(lockPicks.createdAt));
 
@@ -1565,7 +1567,33 @@ export async function getWeekLockFeedLive(): Promise<WeekLockFeedEntry[]> {
     result: row.result,
     note: row.note ?? undefined,
     createdAt: toIso(row.createdAt)!,
+    commenceTime: toIso(row.commenceTime) ?? undefined,
   }));
+}
+
+export async function getPublicStatsLive(): Promise<import("@/lib/types").PublicStats> {
+  const db = dbOrThrow();
+  const [members, lockRows] = await Promise.all([
+    db.select({ id: userProfiles.id }).from(userProfiles),
+    db.select({ result: lockPicks.result }).from(lockPicks),
+  ]);
+
+  const lockWins = lockRows.filter((r) => r.result === "win").length;
+  const lockLosses = lockRows.filter((r) => r.result === "loss").length;
+  const lockPushes = lockRows.filter((r) => r.result === "push" || r.result === "void").length;
+
+  const { leaderboards } = await computeLeaderboards();
+  const topRoiPercent = leaderboards.length > 0
+    ? Math.max(...leaderboards.map((e) => e.roiPercent))
+    : 0;
+
+  return {
+    memberCount: members.length,
+    topRoiPercent,
+    lockWins,
+    lockLosses,
+    lockPushes,
+  };
 }
 
 export async function getMemberSnapshotLive(viewer: ViewerProfile): Promise<MemberSnapshot> {

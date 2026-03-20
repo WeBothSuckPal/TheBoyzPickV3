@@ -30,6 +30,7 @@ import {
   updateProfileLive,
   getActivityFeedLive,
   getWeekLockFeedLive,
+  getPublicStatsLive,
   toggleReactionLive,
   addCommentLive,
   deleteCommentLive,
@@ -1330,23 +1331,47 @@ export async function getPublicFeed(): Promise<ActivityItem[]> {
   }));
 }
 
-/** Public week locks — stripped of team names, spreads, odds, and notes for privacy. */
-export async function getPublicWeekLocks(): Promise<
-  Pick<WeekLockFeedEntry, "id" | "displayName" | "result" | "createdAt">[]
-> {
-  let full: WeekLockFeedEntry[];
-
+export async function getPublicStats(): Promise<import("@/lib/types").PublicStats> {
   if (isDatabaseConfigured()) {
-    full = await getWeekLockFeedLive();
-  } else {
-    const store = getStore();
-    const weekKey = currentWeekKey();
-    full = store.lockPicks
-      .filter((pick) => pick.weekKey === weekKey)
-      .sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt))
-      .map((pick) => ({
+    return getPublicStatsLive();
+  }
+
+  const store = getStore();
+  const allLocks = store.lockPicks;
+  const lockWins = allLocks.filter((p) => p.result === "win").length;
+  const lockLosses = allLocks.filter((p) => p.result === "loss").length;
+  const lockPushes = allLocks.filter((p) => p.result === "push" || p.result === "void").length;
+  const leaderboards = buildLeaderboards();
+  const topRoiPercent = leaderboards.length > 0
+    ? Math.max(...leaderboards.map((e) => e.roiPercent))
+    : 0;
+
+  return {
+    memberCount: store.users.length,
+    topRoiPercent,
+    lockWins,
+    lockLosses,
+    lockPushes,
+  };
+}
+
+/** Public week locks — exposes full pick details for social proof on the landing page. */
+export async function getPublicWeekLocks(): Promise<WeekLockFeedEntry[]> {
+  if (isDatabaseConfigured()) {
+    return getWeekLockFeedLive();
+  }
+
+  const store = getStore();
+  const weekKey = currentWeekKey();
+  return store.lockPicks
+    .filter((pick) => pick.weekKey === weekKey)
+    .sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt))
+    .map((pick) => {
+      const game = store.games?.find((g) => g.id === pick.gameId);
+      const u = store.users.find((u) => u.id === pick.userId);
+      return {
         id: pick.id,
-        displayName: (() => { const u = store.users.find((u) => u.id === pick.userId); return u?.nickname ?? u?.displayName ?? "Member"; })(),
+        displayName: u?.nickname ?? u?.displayName ?? "Member",
         selectionTeam: pick.selectionTeam,
         selectionSide: pick.selectionSide,
         spread: pick.spread,
@@ -1354,13 +1379,7 @@ export async function getPublicWeekLocks(): Promise<
         result: pick.result,
         note: pick.note,
         createdAt: pick.createdAt,
-      }));
-  }
-
-  return full.map(({ id, displayName, result, createdAt }) => ({
-    id,
-    displayName,
-    result,
-    createdAt,
-  }));
+        commenceTime: game?.commenceTime,
+      };
+    });
 }
