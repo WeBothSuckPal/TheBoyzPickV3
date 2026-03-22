@@ -32,6 +32,8 @@ export default async function SlipsPage(props: {
         spread: option.spread,
         americanOdds: option.americanOdds,
         market: option.market,
+        openingPoint: option.openingPoint,
+        openingAmericanOdds: option.openingAmericanOdds,
       })),
     }));
 

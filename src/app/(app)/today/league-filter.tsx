@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { OddsDeltaBadge } from "@/components/odds-delta-badge";
 import { cn } from "@/lib/utils";
 import { formatGameTime, formatOdds, formatSpread } from "@/lib/utils";
 import type { GameStatus } from "@/lib/types";
@@ -21,17 +22,6 @@ interface GameOption {
     riskTags: string[];
     blurb: string;
   } | null;
-}
-
-function OddsDeltaBadge({ current, opening }: { current?: number; opening?: number }) {
-  if (opening == null || current == null) return null;
-  const delta = current - opening;
-  if (delta === 0) return null;
-  return (
-    <span className={`text-xs ${delta > 0 ? "text-amber-400" : "text-blue-400"}`}>
-      {delta > 0 ? "▲" : "▼"} {delta > 0 ? "+" : ""}{delta}
-    </span>
-  );
 }
 
 interface FilterableGame {

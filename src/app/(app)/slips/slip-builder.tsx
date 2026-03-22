@@ -11,6 +11,7 @@ import { IdempotencyField } from "@/components/ui/idempotency-field";
 import { Input } from "@/components/ui/input";
 import { americanToDecimal, calculateStraightPayout, calculateParlayPayout } from "@/lib/betting";
 import { formatCurrency, formatOdds, formatSpread, formatGameTime } from "@/lib/utils";
+import { OddsDeltaBadge } from "@/components/odds-delta-badge";
 
 interface GameOption {
   id: string;
@@ -19,6 +20,8 @@ interface GameOption {
   spread: number;
   americanOdds: number;
   market: string;
+  openingPoint?: number;
+  openingAmericanOdds?: number;
 }
 
 interface SlipBuilderGame {
@@ -252,8 +255,9 @@ export function SlipBuilder({
                                     <div className={`text-sm font-semibold ${isSelected ? "text-white" : "text-white/80"}`}>
                                       {getPickLabel(option)}
                                     </div>
-                                    <div className={`mt-0.5 font-mono text-xs ${isSelected ? "text-[var(--accent)]" : "text-[var(--muted-foreground)]"}`}>
-                                      {formatOdds(option.americanOdds)}
+                                    <div className={`mt-0.5 flex items-center gap-1 font-mono text-xs ${isSelected ? "text-[var(--accent)]" : "text-[var(--muted-foreground)]"}`}>
+                                      <span>{formatOdds(option.americanOdds)}</span>
+                                      <OddsDeltaBadge current={option.americanOdds} opening={option.openingAmericanOdds} />
                                     </div>
                                     {isSelected ? (
                                       <div className="absolute right-2.5 top-2.5 flex size-5 items-center justify-center rounded-full bg-[var(--accent)] text-white">
@@ -300,8 +304,10 @@ export function SlipBuilder({
                     >
                       <div className="min-w-0">
                         <div className="text-sm font-semibold text-white">{getPickLabel(option)}</div>
-                        <div className="text-xs text-[var(--muted-foreground)]">
-                          {game.matchup} <span className="font-mono">{formatOdds(option.americanOdds)}</span>
+                        <div className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
+                          <span>{game.matchup}</span>
+                          <span className="font-mono">{formatOdds(option.americanOdds)}</span>
+                          <OddsDeltaBadge current={option.americanOdds} opening={option.openingAmericanOdds} />
                         </div>
                       </div>
                       <button
@@ -440,8 +446,10 @@ export function SlipBuilder({
                 className="rounded-2xl border border-white/8 bg-white/6 px-4 py-3 text-sm"
               >
                 <div className="font-semibold text-white">{getPickLabel(option)}</div>
-                <div className="text-xs text-[var(--muted-foreground)]">
-                  {game.matchup} <span className="font-mono">{formatOdds(option.americanOdds)}</span>
+                <div className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
+                  <span>{game.matchup}</span>
+                  <span className="font-mono">{formatOdds(option.americanOdds)}</span>
+                  <OddsDeltaBadge current={option.americanOdds} opening={option.openingAmericanOdds} />
                 </div>
               </div>
             ))}
