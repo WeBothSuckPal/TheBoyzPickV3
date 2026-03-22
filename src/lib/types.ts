@@ -112,6 +112,8 @@ export interface GameOption {
   bookmaker: string;
   quoteTimestamp: string;
   intelligence?: BetIntelligence;
+  openingPoint?: number;
+  openingAmericanOdds?: number;
 }
 
 export interface GameCard {
