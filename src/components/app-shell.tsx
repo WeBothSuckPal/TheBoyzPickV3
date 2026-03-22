@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 import { appName } from "@/lib/constants";
 import type { ViewerProfile } from "@/lib/types";
 import { cn, formatCurrency } from "@/lib/utils";
+import { SettlementListener } from "@/components/settlement-listener";
 
 const navItems = [
   { href: "/today", label: "Today", icon: Target },
@@ -158,6 +159,7 @@ export function AppShell({
           Legal
         </Link>
       </footer>
+      <SettlementListener />
     </div>
   );
 }
