@@ -178,6 +178,8 @@ export const oddsQuotes = pgTable(
       .notNull()
       .defaultNow(),
     isPrimary: boolean("is_primary").notNull().default(false),
+    openingPoint: numeric("opening_point", { precision: 6, scale: 2 }),
+    openingAmericanOdds: integer("opening_american_odds"),
   },
   (table) => ({
     uniquePrimaryQuoteIdx: uniqueIndex("odds_quotes_primary_identity_idx").on(

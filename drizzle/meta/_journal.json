@@ -50,6 +50,13 @@
       "when": 1773967835597,
       "tag": "0006_talented_saracen",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1774215988743,
+      "tag": "0007_typical_bloodaxe",
+      "breakpoints": true
     }
   ]
 }
