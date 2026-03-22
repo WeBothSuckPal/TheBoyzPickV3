@@ -14,11 +14,24 @@ interface GameOption {
   spread: number;
   americanOdds: number;
   market: string;
+  openingPoint?: number;
+  openingAmericanOdds?: number;
   intelligence?: {
     confidenceBand: string;
     riskTags: string[];
     blurb: string;
   } | null;
+}
+
+function OddsDeltaBadge({ current, opening }: { current?: number; opening?: number }) {
+  if (opening == null || current == null) return null;
+  const delta = current - opening;
+  if (delta === 0) return null;
+  return (
+    <span className={`text-xs ${delta > 0 ? "text-amber-400" : "text-blue-400"}`}>
+      {delta > 0 ? "▲" : "▼"} {delta > 0 ? "+" : ""}{delta}
+    </span>
+  );
 }
 
 interface FilterableGame {
@@ -125,8 +138,12 @@ export function LeagueFilter({ games }: { games: FilterableGame[] }) {
                   className="rounded-3xl border border-white/10 bg-white/6 px-4 py-3"
                 >
                   <div className="text-sm font-semibold text-white">{option.team}</div>
-                  <div className="mt-1 font-mono text-sm text-[var(--muted-foreground)]">
-                    {formatSpread(option.spread)} | {formatOdds(option.americanOdds)}
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5 font-mono text-sm text-[var(--muted-foreground)]">
+                    <span>{formatSpread(option.spread)}</span>
+                    <OddsDeltaBadge current={option.spread} opening={option.openingPoint} />
+                    <span>|</span>
+                    <span>{formatOdds(option.americanOdds)}</span>
+                    <OddsDeltaBadge current={option.americanOdds} opening={option.openingAmericanOdds} />
                   </div>
                   {option.intelligence ? (
                     <div className="mt-3 space-y-2">

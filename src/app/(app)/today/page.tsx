@@ -57,6 +57,8 @@ export default async function TodayPage() {
       spread: option.spread,
       americanOdds: option.americanOdds,
       market: option.market,
+      openingPoint: option.openingPoint,
+      openingAmericanOdds: option.openingAmericanOdds,
       intelligence: option.intelligence
         ? {
             confidenceBand: option.intelligence.confidenceBand,
