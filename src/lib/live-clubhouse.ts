@@ -2592,6 +2592,15 @@ export async function runSettlementSweepLive() {
     .where(eq(betSlips.status, "open"))
     .orderBy(desc(betSlips.createdAt));
 
+  // Build clerkUserId lookup for Pusher events
+  const profileRows = openSlipRows.length > 0
+    ? await db
+        .select({ id: userProfiles.id, clerkUserId: userProfiles.clerkUserId })
+        .from(userProfiles)
+        .where(inArray(userProfiles.id, [...new Set(openSlipRows.map((s) => s.userProfileId))]))
+    : [];
+  const clerkUserIdByProfileId = new Map(profileRows.map((p) => [p.id, p.clerkUserId]));
+
   const settledEmailPayloads: SettledSlipRecord[] = [];
 
   if (openSlipRows.length > 0) {
@@ -2689,6 +2698,21 @@ export async function runSettlementSweepLive() {
       }
 
       settledSlips += 1;
+
+      // Fire real-time toast event for the user
+      const clerkUserId = clerkUserIdByProfileId.get(slip.userProfileId);
+      if (clerkUserId) {
+        try {
+          await dispatchPusherEvent(`user-${clerkUserId}`, "slip.settled", {
+            slipId: slip.id,
+            result: settlement.status,
+            payoutCents: settlement.payoutCents,
+          });
+        } catch {
+          console.warn("[settlement] pusher event failed for slip", slip.id);
+        }
+      }
+
       settledEmailPayloads.push({
         userId: slip.userProfileId,
         userEmail: "",
