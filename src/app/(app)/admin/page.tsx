@@ -1,3 +1,5 @@
+import { Activity } from "lucide-react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireAdmin } from "@/lib/auth";
@@ -23,6 +25,13 @@ export default async function AdminPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <Link
+              href="/admin/ops"
+              className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-[var(--muted-foreground)] transition hover:text-white"
+            >
+              <Activity className="size-4" />
+              Ops Health
+            </Link>
             <AdminOperations
               mode={snapshot.mode}
               maintenanceMode={snapshot.settings.maintenanceMode}
