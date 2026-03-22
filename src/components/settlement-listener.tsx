@@ -18,6 +18,7 @@ export function SettlementListener() {
   const { user } = useUser();
   const [toasts, setToasts] = useState<SettlementToast[]>([]);
   const seenIds = useRef(new Set<string>());
+  const timeoutIds = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -40,14 +41,17 @@ export function SettlementListener() {
       setToasts((prev) => [...prev.slice(-2), toast]); // max 3 visible
 
       // Auto-dismiss after 6 seconds
-      setTimeout(() => {
+      const tid = setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== toast.id));
       }, 6000);
+      timeoutIds.current.push(tid);
     });
 
     return () => {
       channel.unbind_all();
       pusher.unsubscribe(`user-${user.id}`);
+      timeoutIds.current.forEach(clearTimeout);
+      timeoutIds.current = [];
     };
   }, [user]);
 
