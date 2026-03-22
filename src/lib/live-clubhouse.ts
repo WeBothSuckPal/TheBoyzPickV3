@@ -52,8 +52,10 @@ import type {
   LeaderboardEntry,
   LockPickView,
   MemberSnapshot,
+  CronJobStatus,
   OpsAutopilotMode,
   OpsFinding,
+  OpsHealthData,
   OpsHealthReport,
   OpsRemediation,
   RivalryEntry,
@@ -2860,4 +2862,90 @@ export async function getDailyDigestDataLive() {
   }
 
   return { members, games: digestGames };
+}
+
+const CRON_JOBS: { action: string; label: string }[] = [
+  { action: "ran_odds_sync", label: "Odds Sync" },
+  { action: "ran_settlement_sweep", label: "Settlement Sweep" },
+  { action: "ran_ai_ops_autopilot", label: "AI Autopilot" },
+];
+
+export async function getOpsHealthLive(): Promise<OpsHealthData> {
+  const db = dbOrThrow();
+
+  // Last run per cron action — DISTINCT ON requires action first in ORDER BY
+  const lastRunRows = await db.execute(
+    sql`SELECT DISTINCT ON (action) action, outcome, created_at
+        FROM admin_audit_logs
+        WHERE action IN ('ran_odds_sync', 'ran_settlement_sweep', 'ran_ai_ops_autopilot')
+        ORDER BY action, created_at DESC`,
+  );
+
+  const lastRunByAction = new Map(
+    (lastRunRows as unknown as { action: string; outcome: string; created_at: Date }[]).map((r) => [
+      r.action,
+      { outcome: r.outcome, createdAt: r.created_at.toISOString() },
+    ]),
+  );
+
+  const cronJobs: CronJobStatus[] = CRON_JOBS.map(({ action, label }) => {
+    const row = lastRunByAction.get(action);
+    return {
+      action,
+      label,
+      lastRunAt: row?.createdAt ?? null,
+      outcome: row?.outcome ?? null,
+    };
+  });
+
+  // Latest ops health reports (hourly + nightly)
+  const reportRows = await db
+    .select()
+    .from(opsHealthReports)
+    .orderBy(desc(opsHealthReports.createdAt))
+    .limit(10);
+
+  const latestHourly = reportRows.find((r) => r.mode === "hourly") ?? null;
+  const latestNightly = reportRows.find((r) => r.mode === "nightly") ?? null;
+
+  // Active anomaly alerts, sorted by severity then time
+  const alertRows = await db.execute(
+    sql`SELECT id, category, severity, title, detail, created_at
+        FROM anomaly_alerts
+        WHERE resolved_at IS NULL
+        ORDER BY CASE severity WHEN 'critical' THEN 3 WHEN 'warning' THEN 2 ELSE 1 END DESC,
+                 created_at DESC`,
+  );
+
+  return {
+    cronJobs,
+    latestHourlyReport: latestHourly
+      ? {
+          score: latestHourly.score,
+          summary: latestHourly.summary,
+          findings: latestHourly.findings as unknown[],
+          remediations: latestHourly.remediations as unknown[],
+          createdAt: latestHourly.createdAt.toISOString(),
+        }
+      : null,
+    latestNightlyReport: latestNightly
+      ? {
+          score: latestNightly.score,
+          summary: latestNightly.summary,
+          findings: latestNightly.findings as unknown[],
+          remediations: latestNightly.remediations as unknown[],
+          createdAt: latestNightly.createdAt.toISOString(),
+        }
+      : null,
+    anomalyAlerts: (
+      alertRows as unknown as { id: string; category: string; severity: string; title: string; detail: string; created_at: Date }[]
+    ).map((r) => ({
+      id: r.id,
+      category: r.category,
+      severity: r.severity,
+      title: r.title,
+      detail: r.detail,
+      createdAt: r.created_at.toISOString(),
+    })),
+  };
 }

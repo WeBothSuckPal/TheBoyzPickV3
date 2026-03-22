@@ -347,3 +347,17 @@ export interface SelectionReference {
   gameId: string;
   option: GameOption;
 }
+
+export interface CronJobStatus {
+  action: string;
+  label: string;
+  lastRunAt: string | null;
+  outcome: string | null;
+}
+
+export interface OpsHealthData {
+  cronJobs: CronJobStatus[];
+  latestHourlyReport: { score: number; summary: string; findings: unknown[]; remediations: unknown[]; createdAt: string } | null;
+  latestNightlyReport: { score: number; summary: string; findings: unknown[]; remediations: unknown[]; createdAt: string } | null;
+  anomalyAlerts: { id: string; category: string; severity: string; title: string; detail: string; createdAt: string }[];
+}

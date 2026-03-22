@@ -36,6 +36,7 @@ import {
   deleteCommentLive,
   getReactionSummariesLive,
   getCommentsLive,
+  getOpsHealthLive,
 } from "@/lib/live-clubhouse";
 import { getWeekKey, isDateOnOrAfterWeekKey } from "@/lib/time";
 import { makeId } from "@/lib/utils";
@@ -57,6 +58,7 @@ import type {
   MemberSnapshot,
   OpsAutopilotMode,
   OpsFinding,
+  OpsHealthData,
   OpsRemediation,
   RivalryEntry,
   SelectionReference,
@@ -1382,4 +1384,20 @@ export async function getPublicWeekLocks(): Promise<WeekLockFeedEntry[]> {
         commenceTime: game?.commenceTime,
       };
     });
+}
+
+export async function getOpsHealth(): Promise<OpsHealthData> {
+  if (isDatabaseConfigured()) {
+    return getOpsHealthLive();
+  }
+  return {
+    cronJobs: [
+      { action: "ran_odds_sync", label: "Odds Sync", lastRunAt: null, outcome: null },
+      { action: "ran_settlement_sweep", label: "Settlement Sweep", lastRunAt: null, outcome: null },
+      { action: "ran_ai_ops_autopilot", label: "AI Autopilot", lastRunAt: null, outcome: null },
+    ],
+    latestHourlyReport: null,
+    latestNightlyReport: null,
+    anomalyAlerts: [],
+  };
 }
