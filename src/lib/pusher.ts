@@ -20,6 +20,8 @@ export function getPusherServer() {
   });
 }
 
+let pusherClientInstance: PusherClient | null = null;
+
 export function getPusherClient() {
   const key = process.env.NEXT_PUBLIC_PUSHER_APP_KEY;
   const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
@@ -28,9 +30,11 @@ export function getPusherClient() {
     return null;
   }
 
-  return new PusherClient(key, {
-    cluster,
-  });
+  if (!pusherClientInstance) {
+    pusherClientInstance = new PusherClient(key, { cluster });
+  }
+
+  return pusherClientInstance;
 }
 
 export async function dispatchPusherEvent(channel: string, event: string, data: unknown) {

@@ -53,7 +53,7 @@ export function SettlementListener() {
       timeoutIds.current.forEach(clearTimeout);
       timeoutIds.current = [];
     };
-  }, [user]);
+  }, [user?.id]);
 
   if (toasts.length === 0) return null;
 
