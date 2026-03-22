@@ -848,6 +848,8 @@ async function buildGameCards(
         history: marketHistory.slice(0, 8),
         commenceTime: toIso(game.commenceTime)!,
       }),
+      openingPoint: row.openingPoint != null ? numericToNumber(row.openingPoint) : undefined,
+      openingAmericanOdds: row.openingAmericanOdds ?? undefined,
     };
 
     const list = optionsByGame.get(row.gameId) ?? [];
@@ -2343,6 +2345,34 @@ export async function runOddsSyncLive() {
           ),
         );
 
+      // Snapshot opening values for ALL markets before deleting
+      const openingMap = new Map<string, { openingPoint: string | null; openingAmericanOdds: number | null }>();
+      const allCurrentQuotes = await db
+        .select({
+          market: oddsQuotes.market,
+          selectionSide: oddsQuotes.selectionSide,
+          openingPoint: oddsQuotes.openingPoint,
+          openingAmericanOdds: oddsQuotes.openingAmericanOdds,
+          point: oddsQuotes.point,
+          americanOdds: oddsQuotes.americanOdds,
+        })
+        .from(oddsQuotes)
+        .where(
+          and(
+            eq(oddsQuotes.gameId, gameId),
+            eq(oddsQuotes.bookmakerKey, settings.primaryBookmaker),
+          ),
+        );
+
+      for (const q of allCurrentQuotes) {
+        const key = `${q.market}:${q.selectionSide}`;
+        openingMap.set(key, {
+          // If opening values already exist, preserve them; otherwise treat current as opening
+          openingPoint: q.openingPoint ?? q.point,
+          openingAmericanOdds: q.openingAmericanOdds ?? q.americanOdds,
+        });
+      }
+
       await db
         .delete(oddsQuotes)
         .where(
@@ -2353,17 +2383,23 @@ export async function runOddsSyncLive() {
         );
 
       await db.insert(oddsQuotes).values(
-        event.outcomes.map((outcome) => ({
-          gameId,
-          bookmakerKey: settings.primaryBookmaker,
-          market: outcome.market,
-          selectionTeam: outcome.team,
-          selectionSide: outcome.side,
-          point: String(outcome.spread),
-          americanOdds: outcome.americanOdds,
-          quoteTimestamp: new Date(outcome.quoteTimestamp),
-          isPrimary: true,
-        })),
+        event.outcomes.map((outcome) => {
+          const key = `${outcome.market}:${outcome.side}`;
+          const opening = openingMap.get(key);
+          return {
+            gameId,
+            bookmakerKey: settings.primaryBookmaker,
+            market: outcome.market,
+            selectionTeam: outcome.team,
+            selectionSide: outcome.side,
+            point: String(outcome.spread),
+            americanOdds: outcome.americanOdds,
+            quoteTimestamp: new Date(outcome.quoteTimestamp),
+            isPrimary: true,
+            openingPoint: opening ? opening.openingPoint : String(outcome.spread),
+            openingAmericanOdds: opening ? opening.openingAmericanOdds : outcome.americanOdds,
+          };
+        }),
       );
 
       // Detect significant line shifts (>= 1.5 points)
