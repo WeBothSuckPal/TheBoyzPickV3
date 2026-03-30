@@ -188,7 +188,7 @@ export function AppShell({
           Legal
         </Link>
       </footer>
-      <SettlementListener />
+      {clerkConfigured ? <SettlementListener /> : null}
     </div>
   );
 }
