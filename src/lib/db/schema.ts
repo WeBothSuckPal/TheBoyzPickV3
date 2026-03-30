@@ -110,22 +110,31 @@ export const walletLedgerEntries = pgTable(
   }),
 );
 
-export const topUpRequests = pgTable("top_up_requests", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userProfileId: uuid("user_profile_id")
-    .notNull()
-    .references(() => userProfiles.id),
-  amountCents: integer("amount_cents").notNull(),
-  status: topUpStatusEnum("status").notNull().default("pending"),
-  note: text("note"),
-  approvedByUserProfileId: uuid("approved_by_user_profile_id").references(
-    () => userProfiles.id,
-  ),
-  requestedAt: timestamp("requested_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  approvedAt: timestamp("approved_at", { withTimezone: true }),
-});
+export const topUpRequests = pgTable(
+  "top_up_requests",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userProfileId: uuid("user_profile_id")
+      .notNull()
+      .references(() => userProfiles.id),
+    amountCents: integer("amount_cents").notNull(),
+    status: topUpStatusEnum("status").notNull().default("pending"),
+    note: text("note"),
+    idempotencyKey: text("idempotency_key"),
+    approvedByUserProfileId: uuid("approved_by_user_profile_id").references(
+      () => userProfiles.id,
+    ),
+    requestedAt: timestamp("requested_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+  },
+  (table) => ({
+    userIdempotencyIdx: uniqueIndex("top_up_requests_user_idempotency_idx")
+      .on(table.userProfileId, table.idempotencyKey)
+      .where(sql`${table.idempotencyKey} is not null`),
+  }),
+);
 
 export const leagues = pgTable("leagues", {
   slug: text("slug").primaryKey(),

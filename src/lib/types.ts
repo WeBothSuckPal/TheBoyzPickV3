@@ -164,6 +164,7 @@ export interface TopUpRequestView {
   amountCents: number;
   status: TopUpStatus;
   note?: string;
+  idempotencyKey?: string;
   requestedAt: string;
   approvedAt?: string;
   approvedBy?: string;

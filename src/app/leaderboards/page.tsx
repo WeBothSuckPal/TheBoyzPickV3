@@ -1,4 +1,5 @@
 import { getClubStats, getEnhancedLeaderboards } from "@/lib/clubhouse";
+import { getAppMode } from "@/lib/env";
 import { LeaderboardTabs } from "./leaderboard-tabs";
 
 export const dynamic = "force-dynamic";
@@ -9,5 +10,12 @@ export default async function LeaderboardsPage() {
     getClubStats(),
   ]);
 
-  return <LeaderboardTabs leaderboards={leaderboards} rivalryBoard={rivalryBoard} clubStats={clubStats} />;
+  return (
+    <LeaderboardTabs
+      leaderboards={leaderboards}
+      rivalryBoard={rivalryBoard}
+      clubStats={clubStats}
+      mode={getAppMode()}
+    />
+  );
 }

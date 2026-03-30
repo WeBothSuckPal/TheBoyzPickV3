@@ -57,6 +57,13 @@
       "when": 1774215988743,
       "tag": "0007_typical_bloodaxe",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1774834200000,
+      "tag": "0008_top_up_idempotency",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,133 @@
+<h2>New Landing Page — Wireframe</h2>
+<p class="subtitle">Proposed structure. Click any section to flag for discussion.</p>
+
+<style>
+.page-wire {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 680px;
+  margin: 20px auto 0;
+}
+.wire-section {
+  border: 1.5px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 16px 18px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+.wire-section:hover { border-color: rgba(204,41,54,0.4); background: rgba(204,41,54,0.04); }
+.wire-section.selected { border-color: #CC2936; background: rgba(204,41,54,0.08); }
+.wire-section.cut {
+  border-color: rgba(255,255,255,0.06);
+  background: rgba(0,0,0,0.2);
+  opacity: 0.45;
+}
+.wire-section.new-section { border-color: rgba(74,222,128,0.3); background: rgba(34,197,94,0.04); }
+.wire-section.new-section .wire-label { color: #4ade80; }
+.wire-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #9db1bf;
+  margin-bottom: 6px;
+}
+.wire-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #e8f0f5;
+  margin: 0 0 4px 0;
+}
+.wire-desc {
+  font-size: 13px;
+  color: #9db1bf;
+  margin: 0;
+  line-height: 1.5;
+}
+.cut-badge {
+  position: absolute;
+  top: 12px; right: 14px;
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: #f87171;
+  background: rgba(204,41,54,0.15);
+  padding: 2px 8px; border-radius: 99px;
+}
+.new-badge {
+  position: absolute;
+  top: 12px; right: 14px;
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: #4ade80;
+  background: rgba(34,197,94,0.12);
+  padding: 2px 8px; border-radius: 99px;
+}
+.wire-detail {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: rgba(255,255,255,0.04);
+  font-size: 12px;
+  color: #9db1bf;
+  line-height: 1.6;
+}
+.wire-detail strong { color: #c8d8e4; }
+</style>
+
+<div class="page-wire">
+
+  <div class="wire-section" onclick="this.classList.toggle('selected')">
+    <div class="wire-label">§1 — Hero (kept)</div>
+    <p class="wire-title">Logo + Headline + CTA</p>
+    <p class="wire-desc">Tighten subheading copy to feel more exclusive. CTAs unchanged. Border-glow animation stays.</p>
+  </div>
+
+  <div class="wire-section cut">
+    <div class="cut-badge">Cut</div>
+    <div class="wire-label">§2 — Tagline (removed)</div>
+    <p class="wire-title">"Built by the Boyz, for the Boyz."</p>
+    <p class="wire-desc">Redundant with the hero. Gone.</p>
+  </div>
+
+  <div class="wire-section new-section" onclick="this.classList.toggle('selected')">
+    <div class="new-badge">New</div>
+    <div class="wire-label">§2 — Lock of the Day Spotlight</div>
+    <p class="wire-title">Standalone pick card — full details visible</p>
+    <p class="wire-desc">Full pick info (team, line, market), who posted it, time until game, result badge once settled. If no lock today, shows last settled lock as a win/loss trophy.</p>
+    <div class="wire-detail">
+      <strong>Data:</strong> getPublicWeekLocks() — expose pick details publicly<br>
+      <strong>States:</strong> Pending (pick + countdown) · Won · Lost · No lock today (last result)<br>
+      <strong>Design:</strong> Accent-bordered hero card, centered, prominent
+    </div>
+  </div>
+
+  <div class="wire-section new-section" onclick="this.classList.toggle('selected')">
+    <div class="new-badge">Replaces Features Grid</div>
+    <div class="wire-label">§3 — Season Stats Bar</div>
+    <p class="wire-title">Live social proof — 3–4 key numbers</p>
+    <p class="wire-desc">Season lock record (e.g. 14-6), win rate %, top member ROI, number of active members. Real numbers that prove the club is active.</p>
+    <div class="wire-detail">
+      <strong>Data:</strong> getPublicLeaderboards() for ROI/standings, aggregate lock results<br>
+      <strong>Design:</strong> Horizontal strip of 3–4 stat cards, monospace numbers, accent accents
+    </div>
+  </div>
+
+  <div class="wire-section" onclick="this.classList.toggle('selected')">
+    <div class="wire-label">§4 — Live Activity (kept, refined)</div>
+    <p class="wire-title">Locks Feed + Feed + Standings</p>
+    <p class="wire-desc">Same 3-column layout. Lock cards in this section now also show pick details (not just "pending"). No other structural changes.</p>
+  </div>
+
+  <div class="wire-section" onclick="this.classList.toggle('selected')">
+    <div class="wire-label">§5 — Footer (unchanged)</div>
+    <p class="wire-title">Sign in / copyright</p>
+    <p class="wire-desc">No changes needed.</p>
+  </div>
+
+</div>
+
+<div style="margin-top: 18px; max-width:680px; margin-left:auto; margin-right:auto; padding: 13px 16px; border-radius: 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);">
+  <p style="margin:0; font-size:13px; color:#9db1bf;">Click any section to flag it. Let me know in the terminal if anything needs adjusting.</p>
+</div>

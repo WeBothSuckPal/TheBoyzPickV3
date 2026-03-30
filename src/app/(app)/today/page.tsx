@@ -1,9 +1,10 @@
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CommentSection } from "@/components/ui/comment-section";
 import { ReactionBar } from "@/components/ui/reaction-bar";
 import { requireViewer } from "@/lib/auth";
-import { getMemberSnapshot, getReactionSummaries } from "@/lib/clubhouse";
+import { getComments, getMemberSnapshot, getReactionSummaries } from "@/lib/clubhouse";
 import { formatOdds, formatSpread, relativeTime } from "@/lib/utils";
 import { LeagueFilter } from "./league-filter";
 import { LockPickForm } from "./lock-pick-form";
@@ -12,6 +13,11 @@ function buildAvailableGames(games: Awaited<ReturnType<typeof getMemberSnapshot>
   const now = new Date();
   return games
     .filter((game) => game.status === "scheduled" && new Date(game.commenceTime) > now)
+    .map((game) => ({
+      ...game,
+      options: game.options.filter((option) => option.market === "spreads"),
+    }))
+    .filter((game) => game.options.length > 0)
     .map((game) => ({
       id: game.id,
       league: game.league,
@@ -36,12 +42,16 @@ export default async function TodayPage() {
   const viewer = await requireViewer();
   const snapshot = await getMemberSnapshot(viewer);
   const availableGames = buildAvailableGames(snapshot.games);
+  const socialEnabled = snapshot.mode === "live";
 
-  // Fetch social data for lock picks
   const lockPickIds = snapshot.weekLockFeed.map((lp) => lp.id);
-  const lockReactions = await getReactionSummaries(viewer.id, "lock_pick", lockPickIds);
+  const [lockReactions, lockComments] = socialEnabled
+    ? await Promise.all([
+        getReactionSummaries(viewer.id, "lock_pick", lockPickIds),
+        getComments("lock_pick", lockPickIds),
+      ])
+    : [new Map(), new Map()];
 
-  // Pass all games to the client filter (it handles status badges)
   const filterableGames = snapshot.games.map((game) => ({
     id: game.id,
     league: game.league,
@@ -50,24 +60,26 @@ export default async function TodayPage() {
     awayTeam: game.awayTeam,
     commenceTime: game.commenceTime,
     status: game.status,
-    options: game.options.map((option) => ({
-      id: option.id,
-      team: option.team,
-      side: option.side,
-      spread: option.spread,
-      americanOdds: option.americanOdds,
-      market: option.market,
-      openingPoint: option.openingPoint,
-      openingAmericanOdds: option.openingAmericanOdds,
-      intelligence: option.intelligence
-        ? {
-            confidenceBand: option.intelligence.confidenceBand,
-            riskTags: option.intelligence.riskTags,
-            blurb: option.intelligence.blurb,
-          }
-        : null,
-    })),
-  }));
+    options: game.options
+      .filter((option) => option.market === "spreads")
+      .map((option) => ({
+        id: option.id,
+        team: option.team,
+        side: option.side,
+        spread: option.spread,
+        americanOdds: option.americanOdds,
+        market: option.market,
+        openingPoint: option.openingPoint,
+        openingAmericanOdds: option.openingAmericanOdds,
+        intelligence: option.intelligence
+          ? {
+              confidenceBand: option.intelligence.confidenceBand,
+              riskTags: option.intelligence.riskTags,
+              blurb: option.intelligence.blurb,
+            }
+          : null,
+      })),
+  })).filter((game) => game.options.length > 0);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
@@ -187,13 +199,21 @@ export default async function TodayPage() {
                       {entry.result}
                     </Badge>
                   </div>
-                  <div className="mt-3 border-t border-white/6 pt-2">
-                    <ReactionBar
-                      targetType="lock_pick"
-                      targetId={entry.id}
-                      reactions={lockReactions.get(entry.id) ?? []}
-                    />
-                  </div>
+                  {socialEnabled ? (
+                    <div className="mt-3 space-y-3 border-t border-white/6 pt-2">
+                      <ReactionBar
+                        targetType="lock_pick"
+                        targetId={entry.id}
+                        reactions={lockReactions.get(entry.id) ?? []}
+                      />
+                      <CommentSection
+                        targetType="lock_pick"
+                        targetId={entry.id}
+                        comments={lockComments.get(entry.id) ?? []}
+                        viewerUserId={viewer.id}
+                      />
+                    </div>
+                  ) : null}
                 </div>
               ))
             )}

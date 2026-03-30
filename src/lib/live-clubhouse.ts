@@ -36,10 +36,10 @@ import {
   walletLedgerEntries,
 } from "@/lib/db/schema";
 import { sendSettlementEmails, type SettledSlipRecord } from "@/lib/email";
-import { getAdminEmails, getAppMode, getClubTimeZone } from "@/lib/env";
+import { getAdminEmails, getAppMode, getClubTimeZone, isClerkConfigured } from "@/lib/env";
 import { fetchLeagueOdds, fetchLeagueScores } from "@/lib/odds-api";
 import { dispatchPusherEvent } from "@/lib/pusher";
-import { getWeekKey, isDateOnOrAfterWeekKey } from "@/lib/time";
+import { getLocalDayBounds, getWeekKey, isDateOnOrAfterWeekKey } from "@/lib/time";
 import type {
   AdminAnomalyAlert,
   AdminSnapshot,
@@ -214,6 +214,7 @@ function mapTopUp(row: typeof topUpRequests.$inferSelect): TopUpRequestView {
     amountCents: row.amountCents,
     status: row.status,
     note: row.note ?? undefined,
+    idempotencyKey: row.idempotencyKey ?? undefined,
     requestedAt: toIso(row.requestedAt)!,
     approvedAt: toIso(row.approvedAt),
     approvedBy: row.approvedByUserProfileId ?? undefined,
@@ -1705,15 +1706,70 @@ export async function updateMemberAccessLive(input: {
     }
   }
 
-  const updated = await db
-    .update(userProfiles)
-    .set({
-      role: input.role ?? target.role,
-      status: input.status ?? target.status,
-      updatedAt: now(),
-    })
-    .where(eq(userProfiles.id, input.targetUserId))
-    .returning();
+  const nextRole = input.role ?? target.role;
+  const nextStatus = input.status ?? target.status;
+  const statusChanged = nextStatus !== target.status;
+
+  const syncClerkStatus = async (status: ViewerProfile["status"]) => {
+    if (!statusChanged || !isClerkConfigured()) {
+      return;
+    }
+
+    try {
+      const { clerkClient } = await import("@clerk/nextjs/server");
+      const client = await clerkClient();
+
+      if (status === "suspended") {
+        await client.users.banUser(target.clerkUserId);
+      } else {
+        await client.users.unbanUser(target.clerkUserId);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown Clerk sync failure";
+
+      await recordAudit(
+        { userId: input.actorUserId },
+        "failed_member_access_sync",
+        "user",
+        input.targetUserId,
+        {
+          outcome: "failure",
+          metadata: {
+            previousStatus: target.status,
+            requestedStatus: status,
+            reason: message,
+          },
+        },
+      );
+
+      throw new Error("Failed to sync account status with Clerk. No changes were applied.");
+    }
+  };
+
+  await syncClerkStatus(nextStatus);
+
+  let updated: typeof userProfiles.$inferSelect[];
+  try {
+    updated = await db
+      .update(userProfiles)
+      .set({
+        role: nextRole,
+        status: nextStatus,
+        updatedAt: now(),
+      })
+      .where(eq(userProfiles.id, input.targetUserId))
+      .returning();
+  } catch (error) {
+    if (statusChanged && isClerkConfigured()) {
+      try {
+        await syncClerkStatus(target.status);
+      } catch {
+        // Preserve the original database error.
+      }
+    }
+
+    throw error;
+  }
 
   await recordAudit({ userId: input.actorUserId }, "updated_member_access", "user", input.targetUserId, {
     metadata: {
@@ -1752,20 +1808,52 @@ export async function setMaintenanceModeLive(actorUserId: string, enabled: boole
   return enabled;
 }
 
-export async function requestTopUpLive(userId: string, amountCents: number, note?: string) {
+export async function requestTopUpLive(
+  userId: string,
+  amountCents: number,
+  note?: string,
+  idempotencyKey?: string,
+) {
   const db = dbOrThrow();
-  const inserted = await db
-    .insert(topUpRequests)
-    .values({
-      userProfileId: userId,
-      amountCents,
-      note,
-      status: "pending",
-    })
-    .returning();
+  const { row, created } = await db.transaction(async (tx) => {
+    await lockUserScopeTx(tx, userId);
 
-  await recordAudit({ userId }, "requested_top_up", "top_up_request", inserted[0]!.id);
-  return mapTopUp(inserted[0]!);
+    if (idempotencyKey) {
+      const existing = await tx
+        .select()
+        .from(topUpRequests)
+        .where(
+          and(
+            eq(topUpRequests.userProfileId, userId),
+            eq(topUpRequests.idempotencyKey, idempotencyKey),
+          ),
+        )
+        .limit(1);
+
+      if (existing[0]) {
+        return { row: existing[0], created: false };
+      }
+    }
+
+    const inserted = await tx
+      .insert(topUpRequests)
+      .values({
+        userProfileId: userId,
+        amountCents,
+        note,
+        idempotencyKey,
+        status: "pending",
+      })
+      .returning();
+
+    return { row: inserted[0]!, created: true };
+  });
+
+  if (created) {
+    await recordAudit({ userId }, "requested_top_up", "top_up_request", row.id);
+  }
+
+  return mapTopUp(row);
 }
 
 export async function approveTopUpLive(actorUserId: string, requestId: string) {
@@ -1934,6 +2022,25 @@ export async function saveLockPickLive(userId: string, selectionId: string, note
 
   if (!quote) {
     throw new Error("That lock pick is no longer available.");
+  }
+
+  if (quote.market !== "spreads") {
+    throw new Error("Lock of the Day must use a spread line.");
+  }
+
+  const gameRows = await db
+    .select()
+    .from(games)
+    .where(eq(games.id, quote.gameId))
+    .limit(1);
+  const game = gameRows[0];
+
+  if (!game) {
+    throw new Error("Game not found for selection.");
+  }
+
+  if (+new Date(game.commenceTime) <= Date.now()) {
+    throw new Error("Lock of the Day must be submitted before the game starts.");
   }
 
   const existing = await db
@@ -2799,6 +2906,7 @@ export async function runSettlementSweepLive() {
 
 export async function getDailyDigestDataLive() {
   const db = dbOrThrow();
+  const { start, end } = getLocalDayBounds(new Date(), getClubTimeZone());
 
   // Active members with emails
   const members = await db
@@ -2807,19 +2915,14 @@ export async function getDailyDigestDataLive() {
     .where(eq(userProfiles.status, "active"));
 
   // Today's scheduled games with primary odds
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
-
   const scheduledGames = await db
     .select()
     .from(games)
     .where(
       and(
         eq(games.status, "scheduled"),
-        gte(games.commenceTime, todayStart),
-        lte(games.commenceTime, todayEnd),
+        gte(games.commenceTime, start),
+        lte(games.commenceTime, end),
       ),
     )
     .orderBy(asc(games.commenceTime));

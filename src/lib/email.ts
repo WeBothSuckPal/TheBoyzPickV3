@@ -12,12 +12,9 @@ function redactEmail(email: string): string {
   return `${local[0]}***@${domain}`;
 }
 
-/** Per-execution dedup — prevents the same recipient getting multiple emails in one cron run. */
-const emailedThisRun = new Set<string>();
-
-function shouldThrottle(email: string): boolean {
-  if (emailedThisRun.has(email)) return true;
-  emailedThisRun.add(email);
+function shouldThrottle(sentRecipients: Set<string>, email: string): boolean {
+  if (sentRecipients.has(email)) return true;
+  sentRecipients.add(email);
   return false;
 }
 
@@ -275,9 +272,10 @@ export async function sendDailyGameDigest(
   const from = getEmailFrom();
   const subject = `Today's card is live — ${games.length} game${games.length !== 1 ? "s" : ""} on the board`;
   let sent = 0;
+  const sentRecipients = new Set<string>();
 
   for (const member of members) {
-    if (shouldThrottle(member.email)) continue;
+    if (shouldThrottle(sentRecipients, member.email)) continue;
     try {
       await resend.emails.send({
         from,
@@ -373,10 +371,11 @@ export async function sendOddsShiftAlerts(
   const resend = new Resend(apiKey);
   const from = getEmailFrom();
   let sent = 0;
+  const sentRecipients = new Set<string>();
 
   for (const user of affectedUsers) {
     if (user.shifts.length === 0) continue;
-    if (shouldThrottle(user.email)) continue;
+    if (shouldThrottle(sentRecipients, user.email)) continue;
     try {
       const subject = `Line movement alert — ${user.shifts.length} of your picks shifted`;
       await resend.emails.send({

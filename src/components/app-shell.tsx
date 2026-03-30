@@ -1,10 +1,23 @@
 "use client";
 
+import { SignOutButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AlertTriangle, Settings, Shield, Target, Ticket, Trophy, User, Wallet } from "lucide-react";
+import {
+  AlertTriangle,
+  BarChart3,
+  LogOut,
+  Settings,
+  Shield,
+  Target,
+  Ticket,
+  Trophy,
+  User,
+  Wallet,
+} from "lucide-react";
 import type { ReactNode } from "react";
 
+import { Button } from "@/components/ui/button";
 import { appName } from "@/lib/constants";
 import type { ViewerProfile } from "@/lib/types";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -15,6 +28,7 @@ const navItems = [
   { href: "/slips", label: "Build Slip", icon: Shield },
   { href: "/bets", label: "My Bets", icon: Ticket },
   { href: "/wallet", label: "Wallet", icon: Wallet },
+  { href: "/stats", label: "Stats", icon: BarChart3 },
   { href: "/leaderboards", label: "Leaderboards", icon: Trophy },
 ];
 
@@ -24,12 +38,14 @@ export function AppShell({
   balanceCents,
   mode,
   maintenanceMode,
+  clerkConfigured,
 }: {
   children: ReactNode;
   viewer: ViewerProfile;
   balanceCents: number;
   mode: "demo" | "live";
   maintenanceMode: boolean;
+  clerkConfigured: boolean;
 }) {
   const pathname = usePathname();
 
@@ -119,12 +135,25 @@ export function AppShell({
                   <Settings className="size-5" />
                 </Link>
               ) : null}
+              {clerkConfigured ? (
+                <SignOutButton>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="h-auto rounded-3xl px-4 py-3 text-[var(--muted-foreground)] hover:text-white"
+                    aria-label="Sign out"
+                  >
+                    <LogOut className="size-4" />
+                  </Button>
+                </SignOutButton>
+              ) : null}
             </div>
           </div>
         </div>
       </header>
 
-      <nav className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <nav className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = pathname.startsWith(item.href);

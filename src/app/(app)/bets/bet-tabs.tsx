@@ -4,16 +4,24 @@ import { useState } from "react";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
+import { CommentSection } from "@/components/ui/comment-section";
+import { ReactionBar } from "@/components/ui/reaction-bar";
+import type { BetSlipView, CommentView, ReactionSummary } from "@/lib/types";
 import { cn, formatCompactDate, formatCurrency, formatOdds, formatSpread } from "@/lib/utils";
-import type { BetSlipStatus, BetSlipView } from "@/lib/types";
 
 type Tab = "pending" | "settled" | "all";
 
-function statusClass(status: BetSlipStatus): string {
+type SocialSlip = BetSlipView & {
+  reactions: ReactionSummary[];
+  comments: CommentView[];
+};
+
+function statusClass(status: BetSlipView["status"]): string {
   if (status === "won") return "border-green-500/30 bg-green-500/10 text-green-400";
   if (status === "lost") return "border-red-500/30 bg-red-500/10 text-red-400";
-  if (status === "push" || status === "void")
+  if (status === "push" || status === "void") {
     return "border-yellow-500/30 bg-yellow-500/10 text-yellow-400";
+  }
   return "border-[var(--accent)]/30 bg-[var(--accent)]/10 text-[var(--accent)]";
 }
 
@@ -23,12 +31,19 @@ function legResultClass(result: string) {
   return "text-[var(--muted-foreground)]";
 }
 
-function BetCard({ slip }: { slip: BetSlipView }) {
+function BetCard({
+  slip,
+  socialEnabled,
+  viewerUserId,
+}: {
+  slip: SocialSlip;
+  socialEnabled: boolean;
+  viewerUserId: string;
+}) {
   const isPending = slip.status === "open";
 
   return (
     <div className="rounded-[28px] border border-white/10 bg-black/18 p-4">
-      {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-base font-semibold text-white">
@@ -36,9 +51,7 @@ function BetCard({ slip }: { slip: BetSlipView }) {
           </div>
           <div className="text-sm text-[var(--muted-foreground)]">
             {formatCompactDate(slip.createdAt)}
-            {slip.settledAt ? (
-              <span> · settled {formatCompactDate(slip.settledAt)}</span>
-            ) : null}
+            {slip.settledAt ? <span> · settled {formatCompactDate(slip.settledAt)}</span> : null}
           </div>
         </div>
         <Badge className={statusClass(slip.status)}>
@@ -46,7 +59,6 @@ function BetCard({ slip }: { slip: BetSlipView }) {
         </Badge>
       </div>
 
-      {/* Legs */}
       <div className="mt-4 space-y-2">
         {slip.legs.map((leg) => (
           <div
@@ -66,7 +78,6 @@ function BetCard({ slip }: { slip: BetSlipView }) {
         ))}
       </div>
 
-      {/* Footer: stake / payout */}
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-white/8 bg-white/6 px-4 py-3">
           <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
@@ -128,6 +139,18 @@ function BetCard({ slip }: { slip: BetSlipView }) {
           </div>
         </div>
       </div>
+
+      {socialEnabled ? (
+        <div className="mt-4 space-y-3 border-t border-white/6 pt-3">
+          <ReactionBar targetType="slip" targetId={slip.id} reactions={slip.reactions} />
+          <CommentSection
+            targetType="slip"
+            targetId={slip.id}
+            comments={slip.comments}
+            viewerUserId={viewerUserId}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -154,15 +177,24 @@ function EmptyState({ tab }: { tab: Tab }) {
   );
 }
 
-export function BetTabs({ slips }: { slips: BetSlipView[] }) {
+export function BetTabs({
+  slips,
+  socialEnabled,
+  viewerUserId,
+}: {
+  slips: SocialSlip[];
+  socialEnabled: boolean;
+  viewerUserId: string;
+}) {
   const [tab, setTab] = useState<Tab>("pending");
 
-  const pending = slips.filter((s) => s.status === "open");
+  const pending = slips.filter((slip) => slip.status === "open");
   const settled = slips
-    .filter((s) => s.status !== "open")
-    .sort((a, b) => (b.settledAt ?? b.createdAt).localeCompare(a.settledAt ?? a.createdAt));
-  const all = [...slips].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-
+    .filter((slip) => slip.status !== "open")
+    .sort((left, right) =>
+      (right.settledAt ?? right.createdAt).localeCompare(left.settledAt ?? left.createdAt),
+    );
+  const all = [...slips].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   const visible = tab === "pending" ? pending : tab === "settled" ? settled : all;
 
   const tabs: { key: Tab; label: string; count: number }[] = [
@@ -173,7 +205,6 @@ export function BetTabs({ slips }: { slips: BetSlipView[] }) {
 
   return (
     <div className="space-y-5">
-      {/* Tab bar */}
       <div className="flex gap-1 rounded-2xl border border-white/10 bg-black/20 p-1">
         {tabs.map(({ key, label, count }) => (
           <button
@@ -188,7 +219,7 @@ export function BetTabs({ slips }: { slips: BetSlipView[] }) {
             )}
           >
             {label}
-            {count > 0 && (
+            {count > 0 ? (
               <span
                 className={cn(
                   "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
@@ -199,18 +230,22 @@ export function BetTabs({ slips }: { slips: BetSlipView[] }) {
               >
                 {count}
               </span>
-            )}
+            ) : null}
           </button>
         ))}
       </div>
 
-      {/* Bet cards */}
       {visible.length === 0 ? (
         <EmptyState tab={tab} />
       ) : (
         <div className="space-y-4">
           {visible.map((slip) => (
-            <BetCard key={slip.id} slip={slip} />
+            <BetCard
+              key={slip.id}
+              slip={slip}
+              socialEnabled={socialEnabled}
+              viewerUserId={viewerUserId}
+            />
           ))}
         </div>
       )}

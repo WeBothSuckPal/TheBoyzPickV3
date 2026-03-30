@@ -1,0 +1,134 @@
+<h2>Current Landing Page — Section Audit</h2>
+<p class="subtitle">What's on the page right now. Click anything to flag it for discussion.</p>
+
+<style>
+.section-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+.section-row {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  border: 1.5px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  position: relative;
+}
+.section-row:hover {
+  border-color: rgba(204,41,54,0.4);
+  background: rgba(204,41,54,0.05);
+}
+.section-row.selected {
+  border-color: #CC2936;
+  background: rgba(204,41,54,0.1);
+}
+.section-row.selected::after {
+  content: "✓ flagged";
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  font-size: 11px;
+  color: #CC2936;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.section-num {
+  font-size: 12px;
+  font-weight: 700;
+  color: #CC2936;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  width: 36px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+.section-body h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #e8f0f5;
+  margin: 0 0 4px 0;
+}
+.section-body p {
+  font-size: 13px;
+  color: #9db1bf;
+  margin: 0;
+  line-height: 1.5;
+}
+.tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 7px;
+  border-radius: 99px;
+  margin-right: 5px;
+  margin-top: 5px;
+}
+.tag-keep { background: rgba(34,197,94,0.15); color: #4ade80; }
+.tag-question { background: rgba(234,179,8,0.15); color: #facc15; }
+.tag-heavy { background: rgba(204,41,54,0.15); color: #f87171; }
+</style>
+
+<div class="section-grid">
+
+  <div class="section-row" onclick="this.classList.toggle('selected')" data-choice="hero">
+    <div class="section-num">§1</div>
+    <div class="section-body">
+      <h3>Hero — Logo + Headline + CTA</h3>
+      <p>"Your crew. Your picks. Your season." — animated border glow, Apply to Join / Enter Clubhouse buttons.</p>
+      <span class="tag tag-keep">Strong</span>
+      <span class="tag tag-question">CTA copy?</span>
+    </div>
+  </div>
+
+  <div class="section-row" onclick="this.classList.toggle('selected')" data-choice="tagline">
+    <div class="section-num">§2</div>
+    <div class="section-body">
+      <h3>Identity Tagline — "Built by the Boyz, for the Boyz."</h3>
+      <p>"Private. Competitive. Every pick counts." — a static one-liner section with no interactivity.</p>
+      <span class="tag tag-question">Low value?</span>
+      <span class="tag tag-question">Redundant with hero?</span>
+    </div>
+  </div>
+
+  <div class="section-row" onclick="this.classList.toggle('selected')" data-choice="features">
+    <div class="section-num">§3</div>
+    <div class="section-body">
+      <h3>Features Grid — 6 platform features</h3>
+      <p>Spreads / Moneylines / O-U, Parlays, Lock of the Day, Leaderboards, Commissioner Controls, Auto Settlement.</p>
+      <span class="tag tag-keep">Informative</span>
+      <span class="tag tag-question">Generic feel?</span>
+    </div>
+  </div>
+
+  <div class="section-row" onclick="this.classList.toggle('selected')" data-choice="activity">
+    <div class="section-num">§4</div>
+    <div class="section-body">
+      <h3>Live Activity — Locks + Feed + Standings</h3>
+      <p>Real data: this week's locks with results, sanitized live feed, top 5 leaderboard standings. 3-column layout.</p>
+      <span class="tag tag-keep">Unique differentiator</span>
+      <span class="tag tag-heavy">Visually heavy</span>
+    </div>
+  </div>
+
+  <div class="section-row" onclick="this.classList.toggle('selected')" data-choice="footer">
+    <div class="section-num">§5</div>
+    <div class="section-body">
+      <h3>Footer — Sign in / Sign up links</h3>
+      <p>App badge, tagline, auth links, copyright.</p>
+      <span class="tag tag-question">Minimal</span>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top: 22px; padding: 14px 16px; border-radius: 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);">
+  <p style="margin:0; font-size:13px; color: #9db1bf;">👆 Click any section you want to discuss, change, or cut. Then let me know in the terminal.</p>
+</div>

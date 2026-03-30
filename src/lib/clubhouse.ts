@@ -703,12 +703,25 @@ export async function setMaintenanceMode(actorUserId: string, enabled: boolean) 
   throw new Error("Maintenance mode controls require a database-backed environment.");
 }
 
-export async function requestTopUp(userId: string, amountCents: number, note?: string) {
+export async function requestTopUp(
+  userId: string,
+  amountCents: number,
+  note?: string,
+  idempotencyKey?: string,
+) {
   if (isDatabaseConfigured()) {
-    return requestTopUpLive(userId, amountCents, note);
+    return requestTopUpLive(userId, amountCents, note, idempotencyKey);
   }
 
   const store = getStore();
+  if (idempotencyKey) {
+    const existing = store.topUps.find(
+      (entry) => entry.userId === userId && entry.idempotencyKey === idempotencyKey,
+    );
+    if (existing) {
+      return existing;
+    }
+  }
 
   const request: TopUpRequestView = {
     id: makeId("topup"),
@@ -716,6 +729,7 @@ export async function requestTopUp(userId: string, amountCents: number, note?: s
     amountCents,
     status: "pending",
     note,
+    idempotencyKey,
     requestedAt: nowIso(),
   };
 
@@ -877,6 +891,16 @@ export async function saveLockPick(userId: string, selectionId: string, note?: s
   const reference = getSelection(selectionId);
   if (!reference) {
     throw new Error("That lock pick is no longer available.");
+  }
+  const game = store.games.find((entry) => entry.id === reference.gameId);
+  if (!game) {
+    throw new Error("Game not found for selection.");
+  }
+  if (reference.option.market !== "spreads") {
+    throw new Error("Lock of the Day must use a spread line.");
+  }
+  if (+new Date(game.commenceTime) <= Date.now()) {
+    throw new Error("Lock of the Day must be submitted before the game starts.");
   }
 
   const existing = store.lockPicks.find(

@@ -1,0 +1,6 @@
+[   50487ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://console.neon.tech/api/v2/billing/credit_balance:0
+[   50489ms] [ERROR] Failed to load resource: the server responded with a status of 400 () @ https://console.neon.tech/api/v2/projects?limit=200:0
+[   50596ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://console.neon.tech/api/v2/billing/credit_balance:0
+[   50597ms] [ERROR] Failed to load resource: the server responded with a status of 400 () @ https://console.neon.tech/api/v2/projects?limit=200:0
+[   93955ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://console.neon.tech/api/v2/projects/wild-sky-32337041/integrations/monitoring:0
+[  103025ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://console.neon.tech/api/v2/projects/wild-sky-32337041/branches/br-billowing-art-a4tdq3qo/data-api/neondb:0

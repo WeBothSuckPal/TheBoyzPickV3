@@ -26,20 +26,42 @@ import { recordAudit } from "@/lib/live-clubhouse";
 type ActionResult = { success: boolean; message: string };
 
 /** Whitelist of error messages safe to show to end users. */
-const SAFE_ERROR_MESSAGES = new Set([
-  "Wallet balance is too low.",
-  "Top-up request is no longer pending.",
-  "You already have the maximum number of open slips.",
-  "One or more selections are no longer available.",
-  "Game has already started.",
-  "You have already picked a lock for today.",
-  "Cannot modify your own role.",
-  "Cannot suspend yourself.",
+const ERROR_MESSAGE_MAP = new Map<string, string>([
+  ["Wallet balance is too low.", "Wallet balance is too low."],
+  ["Wallet balance is too low for that stake.", "Wallet balance is too low for that stake."],
+  ["Top-up request is no longer pending.", "Top-up request is no longer pending."],
+  ["You already have the maximum number of open slips.", "You already have the maximum number of open slips."],
+  ["One or more selections are no longer available.", "One or more selections are no longer available."],
+  ["One of the selected lines is no longer available.", "One of the selected lines is no longer available."],
+  ["Game has already started.", "Game has already started."],
+  ["One of the selected games has already started.", "One of the selected games has already started."],
+  ["Choose at least one spread to build a slip.", "Choose at least one spread to build a slip."],
+  ["Parlays are capped at four legs in v1.", "Parlays are capped at four legs in v1."],
+  [
+    "Only one pick per market per game is allowed on a single slip.",
+    "Only one pick per market per game is allowed on a single slip.",
+  ],
+  ["That lock pick is no longer available.", "That lock pick is no longer available."],
+  ["Lock of the Day must use a spread line.", "Lock of the Day must use a spread line."],
+  [
+    "Lock of the Day must be submitted before the game starts.",
+    "Lock of the Day must be submitted before the game starts.",
+  ],
+  ["You have already picked a lock for today.", "You have already picked a lock for today."],
+  ["Cannot modify your own role.", "Cannot modify your own role."],
+  ["Cannot suspend yourself.", "Cannot suspend yourself."],
+  ["You cannot change your own access level.", "You cannot change your own access level."],
+  ["Member not found.", "Member not found."],
+  ["At least one owner admin must remain.", "At least one owner admin must remain."],
+  [
+    "Failed to sync account status with Clerk. No changes were applied.",
+    "Failed to sync account status with Clerk. No changes were applied.",
+  ],
 ]);
 
 function safeMessage(error: unknown, fallback: string): string {
   const msg = error instanceof Error ? error.message : "";
-  return SAFE_ERROR_MESSAGES.has(msg) ? msg : fallback;
+  return ERROR_MESSAGE_MAP.get(msg) ?? fallback;
 }
 
 const topUpSchema = z.object({
@@ -70,7 +92,9 @@ export async function submitTopUpRequestAction(_prev: ActionResult | null, formD
       note: formData.get("note")?.toString(),
     });
 
-    await requestTopUp(viewer.id, parsed.amount * 100, parsed.note);
+    const idempotencyKey = formData.get("idempotencyKey")?.toString();
+
+    await requestTopUp(viewer.id, parsed.amount * 100, parsed.note, idempotencyKey);
     revalidatePath("/wallet");
     revalidatePath("/admin");
     return { success: true, message: "Top-up request submitted." };
@@ -289,33 +313,6 @@ export async function updateMemberAccessAction(_prev: ActionResult | null, formD
       status,
     });
 
-    if (status) {
-      try {
-        const { getDb } = await import("@/lib/db/client");
-        const { userProfiles } = await import("@/lib/db/schema");
-        const { eq } = await import("drizzle-orm");
-        const db = getDb();
-        if (db) {
-          const targetRows = await db
-            .select({ clerkUserId: userProfiles.clerkUserId })
-            .from(userProfiles)
-            .where(eq(userProfiles.id, targetUserId))
-            .limit(1);
-          if (targetRows[0]) {
-            const { clerkClient } = await import("@clerk/nextjs/server");
-            const client = await clerkClient();
-            if (status === "suspended") {
-              await client.users.banUser(targetRows[0].clerkUserId);
-            } else if (status === "active") {
-              await client.users.unbanUser(targetRows[0].clerkUserId);
-            }
-          }
-        }
-      } catch {
-        // Log silently or ignore
-      }
-    }
-
     revalidatePath("/admin");
     return { success: true, message: "Member access updated." };
   } catch (error) {
@@ -405,7 +402,7 @@ export async function toggleReactionAction(_prev: ActionResult | null, formData:
     if (!VALID_EMOJIS.includes(emoji)) return { success: false, message: "Invalid emoji." };
 
     const result = await toggleReaction(viewer.id, targetType, targetId, emoji);
-    revalidatePath("/slips");
+    revalidatePath("/bets");
     revalidatePath("/today");
     return { success: true, message: result === "added" ? "Reaction added." : "Reaction removed." };
   } catch (error) {
@@ -435,7 +432,7 @@ export async function addCommentAction(_prev: ActionResult | null, formData: For
     if (!body || body.length > 280) return { success: false, message: "Comment must be 1-280 characters." };
 
     await addComment(viewer.id, targetType, targetId, body);
-    revalidatePath("/slips");
+    revalidatePath("/bets");
     revalidatePath("/today");
     return { success: true, message: "Comment posted." };
   } catch (error) {
@@ -461,7 +458,7 @@ export async function deleteCommentAction(_prev: ActionResult | null, formData: 
     const deleted = await deleteComment(viewer.id, commentId);
     if (!deleted) return { success: false, message: "Comment not found or not yours." };
 
-    revalidatePath("/slips");
+    revalidatePath("/bets");
     revalidatePath("/today");
     return { success: true, message: "Comment deleted." };
   } catch (error) {

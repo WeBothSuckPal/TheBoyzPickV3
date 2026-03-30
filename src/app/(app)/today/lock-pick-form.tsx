@@ -27,9 +27,6 @@ interface LockPickGame {
 }
 
 function getPickLabel(option: GameOption): string {
-  if (option.market === "h2h") return `${option.team} ML`;
-  if (option.market === "totals")
-    return `${option.team} ${option.spread > 0 ? "O" : "U"} ${Math.abs(option.spread)}`;
   return `${option.team} ${formatSpread(option.spread)}`;
 }
 
